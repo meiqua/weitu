@@ -11,7 +11,6 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-#include "src/segmentation/seg.h"
 #include "src/finder/finderpatternfinder.h"
 #include "src/edcircle/edcircle.h"
 
