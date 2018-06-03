@@ -80,7 +80,7 @@ void hole_test(){
         std::cout << "nothing found" << std::endl;
     }
     imshow("rgb", rgb);
-    waitKey(1);
+    waitKey(0);
 }
 
 void camera_hole_test(){
@@ -109,7 +109,7 @@ void camera_hole_test(){
            }
 
            imshow("rgb", rgb);
-           cv::waitKey(1);
+           cv::waitKey(100);
        }
     }
 }
@@ -117,11 +117,8 @@ void camera_hole_test(){
 
 int main()
 {	
-//    camera_hole_test();
-    hole_test();
+    camera_hole_test();
+//    hole_test();
 
-    for(int i=0; i<100; i++){
-        hole_test();
-    }
     return 0;
 }

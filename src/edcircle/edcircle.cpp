@@ -1,5 +1,4 @@
 #include "edcircle.h"
-#include <memory>
 
 namespace edcircle {
 
@@ -17,45 +16,44 @@ public:
     bool ifend = 0;
     int x;
     int y;
-
-    shared_ptr<link_pix> next;
-    weak_ptr<link_pix> prev;
+    link_pix* next;
+    link_pix* prev;
 };
 
 class link_line{
 public:
 	Vec4f line;
-    vector<shared_ptr<link_pix>> pix_chain;
+    vector<link_pix*>* pix_chain;
 };
 
 class link_seg{
 public:
-    vector<shared_ptr<link_pix>> pix_chain;
-    vector<shared_ptr<link_line>> line_chain;
-    shared_ptr<link_pix> addr;
-    shared_ptr<link_seg> next;
+    vector<link_pix*>* pix_chain;
+    vector<link_line*>* line_chain;
+    link_pix* addr;
+    link_seg* next;
 };
 
 class link_arc{
 public:
 	Point o;
-	float r;
-    vector<shared_ptr<link_pix>> pix_chain;
-    vector<shared_ptr<link_line>> line_chain;
+    float r;
+    vector<link_pix*>* pix_chain;
+    vector<link_line*>* line_chain;
 };
 
 class link_circle{
 public:
-    vector<link_arc> arc_chain;
-    vector<shared_ptr<link_pix>> pix_chain;
+    vector<link_arc>* arc_chain;
+    vector<link_pix*>* pix_chain;
 	Point o;
 	float r;
 };
 
 class link_ellips{
 public:
-    vector<link_arc> arc_chain;
-    vector<shared_ptr<link_pix>> pix_chain;
+    vector<link_arc>* arc_chain;
+    vector<link_pix*>* pix_chain;
 	float A[6];
 	Point o;
 	float a;
@@ -63,8 +61,17 @@ public:
 	float angle;
 };
 
+// add by myself, if not it will leak memeory
+vector<link_pix*> pix2free;
+vector<link_line*> line2free;
+vector<link_seg*> seg2free;
 
-void goleft1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> pix_now)
+vector<link_arc*> arc2free;
+vector<vector<link_pix*>*> pix_v2free;
+vector<vector<link_line*>*> line_v2free;
+vector<vector<link_arc>*> arc_v2free;
+
+void goleft1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, link_pix* &pix_now)
 {
 	if (mag.at<short>(i, j) > 0 && edge.at<uchar>(i, j) != 255 && dir.at<uchar>(i, j) == 0)
 	{
@@ -86,10 +93,10 @@ void goleft1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<lin
 	{
 		edge.at<uchar>(i, j) = 255;
 		pix_now->x = i;
-		pix_now->y = j;
+        pix_now->y = j;
+        pix_now->next = (link_pix*)malloc(sizeof(link_pix));
+        pix2free.push_back(pix_now->next);
 
-        pix_now->next = make_shared<link_pix>();
-//		pix_now->next = (shared_ptr<link_pix>)malloc(sizeof(link_pix));
 		k++;                                                    //每加入一个像素自加一
 		(pix_now->next)->prev = pix_now;
 		pix_now = pix_now->next;
@@ -106,7 +113,7 @@ void goleft1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<lin
 	}
 }
 
-void goleft2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> pix_now)
+void goleft2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, link_pix* &pix_now)
 {
 	if (mag.at<short>(i, j) > 0 && edge.at<uchar>(i, j) != 255 && dir.at<uchar>(i, j) == 0)
 	{
@@ -129,12 +136,12 @@ void goleft2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<lin
 		edge.at<uchar>(i, j) = 255;
 		pix_now->x = i;
 		pix_now->y = j;
-        pix_now->prev = make_shared<link_pix>();
-		k++;
+        pix_now->prev = (link_pix*)malloc(sizeof(link_pix));
+        pix2free.push_back(pix_now->prev);
 
-        auto prev_lock = pix_now->prev.lock();
-        prev_lock->next = pix_now;
-        pix_now = pix_now->prev.lock();
+        k++;
+        (pix_now->prev)->next = pix_now;
+        pix_now = pix_now->prev;
 		if (mag.at<short>(i - 1, j - 1) > mag.at<short>(i, j - 1) &&
 			mag.at<short>(i - 1, j - 1) > mag.at<short>(i + 1, j - 1))
 			i = i - 1;
@@ -148,7 +155,7 @@ void goleft2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<lin
 	}
 }
 
-void goright1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_now)
+void goright1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, link_pix* &pix_now)
 {
 	if (mag.at<short>(i, j) > 0 && edge.at<uchar>(i, j) != 255 && dir.at<uchar>(i, j) == 0)
 	{
@@ -171,7 +178,9 @@ void goright1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<li
 		edge.at<uchar>(i, j) = 255;
 		pix_now->x = i;
 		pix_now->y = j;
-        pix_now->next = make_shared<link_pix>();
+        pix_now->next = (link_pix*)malloc(sizeof(link_pix));
+        pix2free.push_back(pix_now->next);
+
 		k++;
 		(pix_now->next)->prev = pix_now;
 		pix_now = pix_now->next;
@@ -188,7 +197,7 @@ void goright1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<li
 	}
 }
 
-void goright2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_now)
+void goright2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, link_pix* &pix_now)
 {
 	if (mag.at<short>(i, j) > 0 && edge.at<uchar>(i, j) != 255 && dir.at<uchar>(i, j) == 0)
 	{
@@ -211,13 +220,11 @@ void goright2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<li
 		edge.at<uchar>(i, j) = 255;
 		pix_now->x = i;
 		pix_now->y = j;
-        pix_now->prev = make_shared<link_pix>();
-		k++;
-
-        auto prev_lock = pix_now->prev.lock();
-        prev_lock->next = pix_now;
-        pix_now = pix_now->prev.lock();
-
+        pix_now->prev = (link_pix*)malloc(sizeof(link_pix));
+        pix2free.push_back(pix_now->prev);
+        k++;
+        (pix_now->prev)->next = pix_now;
+        pix_now = pix_now->prev;
         if (mag.at<short>(i - 1, j + 1) > mag.at<short>(i, j + 1) &&
 			mag.at<short>(i - 1, j + 1) > mag.at<short>(i + 1, j + 1))
 			i--;
@@ -231,7 +238,7 @@ void goright2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<li
 	}
 }
 
-void godown1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_now)
+void godown1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, link_pix* &pix_now)
 {
 	if (mag.at<short>(i, j) > 0 && edge.at<uchar>(i, j) != 255 && dir.at<uchar>(i, j) == 0)
 	{
@@ -254,7 +261,8 @@ void godown1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<lin
 		edge.at<uchar>(i, j) = 255;
 		pix_now->x = i;
 		pix_now->y = j;
-        pix_now->next = make_shared<link_pix>();
+        pix_now->next = (link_pix*)malloc(sizeof(link_pix));
+        pix2free.push_back(pix_now->next);
 		k++;
 		(pix_now->next)->prev = pix_now;
 		pix_now = pix_now->next;
@@ -271,7 +279,7 @@ void godown1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<lin
 	}
 }
 
-void godown2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_now)
+void godown2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, link_pix* &pix_now)
 {
 	if (mag.at<short>(i, j) > 0 && edge.at<uchar>(i, j) != 255 && dir.at<uchar>(i, j) == 0)
 	{
@@ -294,14 +302,11 @@ void godown2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<lin
 		edge.at<uchar>(i, j) = 255;
 		pix_now->x = i;
 		pix_now->y = j;
-        pix_now->prev = make_shared<link_pix>();
+        pix_now->prev = (link_pix*)malloc(sizeof(link_pix));
+        pix2free.push_back(pix_now->prev);
 		k++;
-
-        auto prev_lock = pix_now->prev.lock();
-        prev_lock->next = pix_now;
-        pix_now = pix_now->prev.lock();
-
-
+        (pix_now->prev)->next = pix_now;
+        pix_now = pix_now->prev;
 		if (mag.at<short>(i + 1, j - 1) > mag.at<short>(i + 1, j) &&
 			mag.at<short>(i + 1, j - 1) > mag.at<short>(i + 1, j + 1))
 			j--;
@@ -315,7 +320,7 @@ void godown2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<lin
 	}
 }
 
-void goup1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_now)
+void goup1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, link_pix* &pix_now)
 {
 	if (mag.at<short>(i, j) > 0 && edge.at<uchar>(i, j) != 255 && dir.at<uchar>(i, j) == 0)
 	{
@@ -338,13 +343,11 @@ void goup1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<link_
 		edge.at<uchar>(i, j) = 255;
 		pix_now->x = i;
 		pix_now->y = j;
-        pix_now->next = make_shared<link_pix>();
+        pix_now->next = (link_pix*)malloc(sizeof(link_pix));
+        pix2free.push_back(pix_now->next);
 		k++;
-
-        auto prev_lock = pix_now->prev.lock();
-        prev_lock->next = pix_now;
-        pix_now = pix_now->prev.lock();
-
+        (pix_now->next)->prev = pix_now;
+        pix_now = pix_now->next;
 		if (mag.at<short>(i - 1, j - 1) > mag.at<short>(i - 1, j) &&
 			mag.at<short>(i - 1, j - 1) > mag.at<short>(i - 1, j + 1))
 			j--;
@@ -358,7 +361,7 @@ void goup1(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<link_
 	}
 }
 
-void goup2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_now)
+void goup2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, link_pix* &pix_now)
 {
 	if (mag.at<short>(i, j) > 0 && edge.at<uchar>(i, j) != 255 && dir.at<uchar>(i, j) == 0)
 	{
@@ -381,11 +384,11 @@ void goup2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<link_
 		edge.at<uchar>(i, j) = 255;
 		pix_now->x = i;
 		pix_now->y = j;
-        pix_now->prev = make_shared<link_pix>();
+        pix_now->prev = (link_pix*)malloc(sizeof(link_pix));
+        pix2free.push_back(pix_now->prev);
 		k++;
-        auto prev_lock = pix_now->prev.lock();
-        prev_lock->next = pix_now;
-        pix_now = pix_now->prev.lock();
+        (pix_now->prev)->next = pix_now;
+        pix_now = pix_now->prev;
 		if (mag.at<short>(i - 1, j - 1) > mag.at<short>(i - 1, j) &&
 			mag.at<short>(i - 1, j - 1) > mag.at<short>(i - 1, j + 1))
 			j--;
@@ -399,16 +402,15 @@ void goup2(int &i, int &j, int &k, Mat mag, Mat &edge, Mat dir, shared_ptr<link_
 	}
 }
 
-int rout(int i, int j, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_now,
-         const shared_ptr<link_seg> seg_now)
+int rout(int i, int j, Mat mag, Mat &edge, Mat dir, link_pix* &pix_now, const link_seg* seg_now)
 {
 	int k = 0;
 	while (mag.at<short>(i, j) > 0 && edge.at<uchar>(i, j) != 255)
 	{
-		goleft1(i, j, k, mag, edge, dir, pix_now);                //先向左走
-        if (k>1 && i == pix_now->prev.lock()->prev.lock()->x && j == pix_now->prev.lock()->prev.lock()->y)
-		{
-            pix_now = pix_now->prev.lock();
+        goleft1(i, j, k, mag, edge, dir, pix_now);                //先向左走
+        if (k>1 && i == pix_now->prev->prev->x && j == pix_now->prev->prev->y)
+        {
+            pix_now = pix_now->prev;
 			i = pix_now->x;
 			j = pix_now->y;
 			pix_now->next = NULL;
@@ -416,9 +418,9 @@ int rout(int i, int j, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_no
 			goright1(i, j, k, mag, edge, dir, pix_now);
 		}
 		godown1(i, j, k, mag, edge, dir, pix_now);
-        if (k>1 && i == pix_now->prev.lock()->prev.lock()->x && j == pix_now->prev.lock()->prev.lock()->y)
+        if (k>1 && i == pix_now->prev->prev->x && j == pix_now->prev->prev->y)
 		{
-            pix_now = pix_now->prev.lock();
+            pix_now = pix_now->prev;
 			i = pix_now->x;
 			j = pix_now->y;
 			pix_now->next = NULL;
@@ -426,9 +428,9 @@ int rout(int i, int j, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_no
 			goup1(i, j, k, mag, edge, dir, pix_now);
 		}
 		goright1(i, j, k, mag, edge, dir, pix_now);
-        if (k>1 && i == pix_now->prev.lock()->prev.lock()->x && j == pix_now->prev.lock()->prev.lock()->y)
+        if (k>1 && i == pix_now->prev->prev->x && j == pix_now->prev->prev->y)
 		{
-            pix_now = pix_now->prev.lock();
+            pix_now = pix_now->prev;
 			i = pix_now->x;
 			j = pix_now->y;
 			pix_now->next = NULL;
@@ -436,9 +438,9 @@ int rout(int i, int j, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_no
 			goleft1(i, j, k, mag, edge, dir, pix_now);
 		}
 		goup1(i, j, k, mag, edge, dir, pix_now);
-        if (k>1 && i == pix_now->prev.lock()->prev.lock()->x && j == pix_now->prev.lock()->prev.lock()->y)
+        if (k>1 && i == pix_now->prev->prev->x && j == pix_now->prev->prev->y)
 		{
-            pix_now = pix_now->prev.lock();
+            pix_now = pix_now->prev;
 			i = pix_now->x;
 			j = pix_now->y;
 			pix_now->next = NULL;
@@ -446,9 +448,9 @@ int rout(int i, int j, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_no
 			godown1(i, j, k, mag, edge, dir, pix_now);
 		}
 	}
-    pix_now = pix_now->prev.lock();
+    pix_now = pix_now->prev;
 	pix_now->ifend = 0;                                     //走到头，即边缘的最后一个点
-    shared_ptr<link_pix> end = pix_now;
+    link_pix* end = pix_now;
 	pix_now = seg_now->addr;                                //回到开始的点
 	i = pix_now->x;
 	j = pix_now->y;
@@ -461,7 +463,7 @@ int rout(int i, int j, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_no
 			pix_now = pix_now->next;
 			i = pix_now->x;
 			j = pix_now->y;
-            pix_now->prev.lock() = NULL;
+            pix_now->prev = NULL;
 			edge.at<uchar>(i, j) = 128;
 			goright2(i, j, k, mag, edge, dir, pix_now);
 		}
@@ -471,7 +473,7 @@ int rout(int i, int j, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_no
 			pix_now = pix_now->next;
 			i = pix_now->x;
 			j = pix_now->y;
-            pix_now->prev.lock() = NULL;
+            pix_now->prev = NULL;
 			edge.at<uchar>(i, j) = 128;
 			goup2(i, j, k, mag, edge, dir, pix_now);
 		}
@@ -481,7 +483,7 @@ int rout(int i, int j, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_no
 			pix_now = pix_now->next;
 			i = pix_now->x;
 			j = pix_now->y;
-            pix_now->prev.lock() = NULL;
+            pix_now->prev = NULL;
 			edge.at<uchar>(i, j) = 128;
 			goleft2(i, j, k, mag, edge, dir, pix_now);
 		}
@@ -491,14 +493,14 @@ int rout(int i, int j, Mat mag, Mat &edge, Mat dir, shared_ptr<link_pix> &pix_no
 			pix_now = pix_now->next;
 			i = pix_now->x;
 			j = pix_now->y;
-            pix_now->prev.lock() = NULL;
+            pix_now->prev = NULL;
 			edge.at<uchar>(i, j) = 128;
 			godown2(i, j, k, mag, edge, dir, pix_now);
 		}
 	}
 	pix_now = pix_now->next;
 	pix_now->ifend = 0;
-	pix_now->prev = end;
+    pix_now->prev = end;
 	end->next = pix_now;
 
 	return(k);
@@ -509,8 +511,7 @@ float getdistance(Point p1, Point p2)
 	return(sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2)));
 }
 
-void leastsquareslinefit(vector<shared_ptr<link_pix>>::iterator pix_chain_iter, int n,
-                         Vec4f &line, float &r)
+void leastsquareslinefit(vector<link_pix*>::iterator pix_chain_iter, int n, Vec4f &line, float &r)
 {
 	r = 0;
 	vector<float> x, y;
@@ -564,7 +565,7 @@ void leastsquareslinefit(vector<shared_ptr<link_pix>>::iterator pix_chain_iter, 
 	}
 }
 
-float ComputePointDistance2Line(shared_ptr<link_line> line_now, shared_ptr<link_pix> pix_now)
+float ComputePointDistance2Line(link_line* line_now, link_pix* pix_now)
 {
 	int x = pix_now->x;
 	int y = pix_now->y;
@@ -576,9 +577,10 @@ float ComputePointDistance2Line(shared_ptr<link_line> line_now, shared_ptr<link_
 		return(abs(x - line_now->line[0]));
 }
 
-void draw_line(vector<shared_ptr<link_pix>>::iterator pix_chain_iter, int length, vector<shared_ptr<link_line>> &line_chain)
+void draw_line(vector<link_pix*>::iterator pix_chain_iter, int length, vector<link_line*> &line_chain)
 {
-    shared_ptr<link_line> line_now = make_shared<link_line>();
+    link_line* line_now = (link_line*)malloc(sizeof(link_line*));
+    line2free.push_back(line_now);
 	float r = 2;
 	while (shortestline <= length)
 	{
@@ -599,16 +601,18 @@ void draw_line(vector<shared_ptr<link_pix>>::iterator pix_chain_iter, int length
 		linelen++;
 	}
 	leastsquareslinefit(pix_chain_iter, linelen, line_now->line, r);
-    line_now->pix_chain = vector<shared_ptr<link_pix>>();
+    line_now->pix_chain = new vector<link_pix*>;
+    pix_v2free.push_back(line_now->pix_chain);
+
 	for (int i = 0; i < linelen; i++)
 	{
-        (line_now->pix_chain).push_back(pix_chain_iter[i]);
+        (*line_now->pix_chain).push_back(pix_chain_iter[i]);
 	}
 	line_chain.push_back(line_now);
 	draw_line(pix_chain_iter + linelen, length - linelen, line_chain);
 }
 
-bool checkifarc(vector<shared_ptr<link_line>>::iterator line_chain_iter)
+bool checkifarc(vector<link_line*>::iterator line_chain_iter)
 {
 	float a[2] = { line_chain_iter[0]->line[2], line_chain_iter[0]->line[3] };
 	float b[2] = { line_chain_iter[1]->line[2], line_chain_iter[1]->line[3] };
@@ -621,7 +625,7 @@ bool checkifarc(vector<shared_ptr<link_line>>::iterator line_chain_iter)
 		&& (inner_a_b < 1) && (inner_b_c < 1));
 }
 
-void draw_arc(vector<shared_ptr<link_line>>::iterator line_chain_iter, int length, vector<link_arc> &arc_list)
+void draw_arc(vector<link_line*>::iterator line_chain_iter, int length, vector<link_arc> &arc_list)
 {
 	bool ifarc = 0;
 	while (3 <= length)
@@ -633,29 +637,32 @@ void draw_arc(vector<shared_ptr<link_line>>::iterator line_chain_iter, int lengt
 	}
 	if (ifarc == 0)return;
 
-    shared_ptr<link_arc> arc = make_shared<link_arc>();
-//    arc->pix_chain = make_shared<link_pix>();
-//    arc->line_chain = make_shared<link_line>();
-	for (int i = 0; i < 3; i++)
+    link_arc *arc = new link_arc;
+    arc2free.push_back(arc);
+    arc->pix_chain = new vector<link_pix*>;
+    pix_v2free.push_back(arc->pix_chain);
+    arc->line_chain = new vector<link_line*>;
+    line_v2free.push_back(arc->line_chain);
+    for (int i = 0; i < 3; i++)
 	{
-        vector<shared_ptr<link_pix>>::iterator pix_end = (line_chain_iter[i]->pix_chain).end();
-        for (vector<shared_ptr<link_pix>>::iterator pix_iter = (line_chain_iter[i]->pix_chain).begin();
+        vector<link_pix*>::iterator pix_end = (*line_chain_iter[i]->pix_chain).end();
+        for (vector<link_pix*>::iterator pix_iter = (*line_chain_iter[i]->pix_chain).begin();
 			pix_iter != pix_end; pix_iter++)
-            (arc->pix_chain).push_back(*pix_iter);
-        (arc->line_chain).push_back(line_chain_iter[i]);
+            (*arc->pix_chain).push_back(*pix_iter);
+        (*arc->line_chain).push_back(line_chain_iter[i]);
 	}
 
 	int arclen = 3;
 	while (arclen < length && checkifarc(line_chain_iter + arclen - 2))
 	{
 		arclen++;
-        vector<shared_ptr<link_pix>>::iterator pix_end = (line_chain_iter[arclen - 1]->pix_chain).end();
-        for (vector<shared_ptr<link_pix>>::iterator pix_iter = (line_chain_iter[arclen - 1]->pix_chain).begin();
+        vector<link_pix*>::iterator pix_end = (*line_chain_iter[arclen - 1]->pix_chain).end();
+        for (vector<link_pix*>::iterator pix_iter = (*line_chain_iter[arclen - 1]->pix_chain).begin();
 			pix_iter != pix_end; pix_iter++)
-            (arc->pix_chain).push_back(*pix_iter);
-        (arc->line_chain).push_back(line_chain_iter[arclen - 1]);
+            (*arc->pix_chain).push_back(*pix_iter);
+        (*arc->line_chain).push_back(line_chain_iter[arclen - 1]);
 	}
-	arc_list.push_back(*arc);
+    arc_list.push_back(*arc);
 	draw_arc(line_chain_iter + arclen, length - arclen, arc_list);
 }
 
@@ -673,7 +680,7 @@ compute_angle(angle, k, a);
 }
 */
 
-void compute_circle_centre(vector<shared_ptr<link_pix>>::iterator pix_iter, int n, float &r, float &R, Point &o)
+void compute_circle_centre(vector<link_pix*>::iterator pix_iter, int n, float &r, float &R, Point &o)
 {
 	vector<int> x, y;
 	float X = 0.0;
@@ -723,15 +730,16 @@ void compute_circle_centre(vector<shared_ptr<link_pix>>::iterator pix_iter, int 
 }
 
 void select_arc(vector<link_arc>::iterator arc_candi_iter,
-                vector<shared_ptr<link_line>>::iterator line_iter, vector<shared_ptr<link_pix>>::iterator pix_iter, int line_num, vector<link_arc> &arc_list)
+                vector<link_line*>::iterator line_iter,
+                vector<link_pix*>::iterator pix_iter, int line_num, vector<link_arc> &arc_list)
 {
 	if (line_num < 3)return;
 	float r = 0;                                              //整个计算，符合则直接导入圆弧列表
 	int n = 0;
-    if ((*arc_candi_iter).line_chain.begin() == line_iter)
+    if (arc_candi_iter->line_chain->begin() == line_iter)
     {
 		for (int i = 0; i < line_num; i++)
-            n = n + ((line_iter[i])->pix_chain).size();
+            n = n + (*line_iter[i]->pix_chain).size();
 		compute_circle_centre(pix_iter, n, r, arc_candi_iter->r, arc_candi_iter->o);
 		if (r < arc_squares)
 		{
@@ -740,7 +748,12 @@ void select_arc(vector<link_arc>::iterator arc_candi_iter,
 		}
 	}
 
-    shared_ptr<link_arc> arc = make_shared<link_arc>();
+    link_arc *arc = new link_arc;
+    arc2free.push_back(arc);
+    arc->pix_chain = new vector<link_pix*>;
+    pix_v2free.push_back(arc->pix_chain);
+    arc->line_chain = new vector<link_line*>;
+    line_v2free.push_back(arc->line_chain);
 
 	float R = 0;
     Point o ={0, 0};
@@ -749,7 +762,7 @@ void select_arc(vector<link_arc>::iterator arc_candi_iter,
 	{
 		n = 0;
 		for (int i = 0; i < 3; i++)
-            n = n + (line_iter[i]->pix_chain).size();
+            n = n + (*line_iter[i]->pix_chain).size();
 		compute_circle_centre(pix_iter, n, r, R, o);
 		if (r < arc_squares)break;
 		line_num--;
@@ -762,7 +775,7 @@ void select_arc(vector<link_arc>::iterator arc_candi_iter,
 	arc->r = R;
 	while (arc_length < line_num)
 	{
-        n = n + (line_iter[arc_length]->pix_chain).size();
+        n = n + (*line_iter[arc_length]->pix_chain).size();
 		compute_circle_centre(pix_iter, n, r, R, o);
 		if (r < arc_squares)
 		{
@@ -775,10 +788,19 @@ void select_arc(vector<link_arc>::iterator arc_candi_iter,
 	}
 	for (int i = 0; i < arc_length; i++)
 	{
-        (arc->line_chain).push_back(line_iter[i]);
-        vector<shared_ptr<link_pix>>::iterator pix_end = (line_iter[i]->pix_chain).end();
-        for (vector<shared_ptr<link_pix>>::iterator pix_iter = (line_iter[i]->pix_chain).begin(); pix_iter != pix_end; pix_iter++)
-            (arc->pix_chain).push_back(*pix_iter);
+
+        //  added by myself, if not it will crush
+        if(arc_candi_iter->line_chain->end() == line_iter+i){
+            break;
+        }
+
+        (*arc->line_chain).push_back(line_iter[i]);
+//        auto pix_end = (*line_iter[i]->pix_chain).end();
+        auto pix_chain = *line_iter[i]->pix_chain;
+        for (int ii=0; ii< pix_chain.size(); ii++){
+            (*arc->pix_chain).push_back(pix_chain[ii]);
+        }
+
 	}
 	arc_list.push_back(*arc);
 	select_arc(arc_candi_iter, line_iter + arc_length, pix_iter + arc_length, line_num - arc_length, arc_list);
@@ -788,11 +810,11 @@ void paixu(vector<link_arc> &arc_list)
 {
 	if (arc_list.size() <= 1)return;
 	vector<link_arc> left, right;
-    vector<link_arc>::size_type length = arc_list[0].pix_chain.size();
+    vector<link_arc>::size_type length = arc_list[0].pix_chain->size();
 	vector<link_arc>::iterator end = arc_list.end();
 	for (vector<link_arc>::iterator iter = arc_list.begin() + 1; iter != end; iter++)
 	{
-        if (iter->pix_chain.size() > length)
+        if (iter->pix_chain->size() > length)
 			left.push_back(*iter);
 		else
 			right.push_back(*iter);
@@ -812,10 +834,10 @@ vector<link_arc>::iterator find_the_nearest(Point p1, Point p2, vector<link_arc>
 	float d = 0.0;
 	for (arc_iter; arc_iter != arc_end; arc_iter++)
 	{
-        p3.x = (*arc_iter[0].pix_chain.begin())->x;
-        p3.y = (*arc_iter[0].pix_chain.begin())->y;
-        p4.x = (*(arc_iter[0].pix_chain.end() - 1))->x;
-        p4.y = (*(arc_iter[0].pix_chain.end() - 1))->y;
+        p3.x = (*arc_iter[0].pix_chain->begin())->x;
+        p3.y = (*arc_iter[0].pix_chain->begin())->y;
+        p4.x = (*(arc_iter[0].pix_chain->end() - 1))->x;
+        p4.y = (*(arc_iter[0].pix_chain->end() - 1))->y;
 		if (d = getdistance(p1,p3) < distance)
 		{
 			distance = d;
@@ -843,10 +865,10 @@ vector<link_arc>::iterator find_the_nearest(Point p1, Point p2, vector<link_arc>
 void updata_the_end(Point &p1, Point &p2, vector<link_arc>::iterator arc_iter)
 {
 	Point p3, p4;
-    p3.x = (*arc_iter[0].pix_chain.begin())->x;
-    p3.y = (*arc_iter[0].pix_chain.begin())->y;
-    p4.x = (*(arc_iter[0].pix_chain.end() - 1))->x;
-    p4.y = (*(arc_iter[0].pix_chain.end() - 1))->y;
+    p3.x = (*arc_iter[0].pix_chain->begin())->x;
+    p3.y = (*arc_iter[0].pix_chain->begin())->y;
+    p4.x = (*(arc_iter[0].pix_chain->end() - 1))->x;
+    p4.y = (*(arc_iter[0].pix_chain->end() - 1))->y;
 	float d = getdistance(p1, p3);
 	int i = 1;
 	if (getdistance(p1, p4) < d)
@@ -881,23 +903,29 @@ void ExtendArcToCircle(vector<link_arc> arc_list, vector<link_circle>& circle_li
 	{
 		//创建一个新圆
 		link_circle circle;
+        circle.arc_chain = new vector<link_arc>;
+
+        circle.pix_chain = new vector<link_pix*>;
+
+        arc_v2free.push_back(circle.arc_chain);
+        pix_v2free.push_back(circle.pix_chain);
 		vector<link_arc>::iterator arc_iter = arc_list.begin();
 		vector<link_arc>::iterator arc_end = arc_list.end();
 		vector<link_arc> arc_copy_list;
-        vector<shared_ptr<link_pix>> pix_chain;
+        vector<link_pix*> pix_chain;
 		Point o;
 		float r = 0;
 		float R = 0;
 		Point p1, p2;
-        p1.x = (*arc_list[0].pix_chain.begin())->x;
-        p1.y = (*arc_list[0].pix_chain.begin())->y;
-        p2.x = (*(arc_list[0].pix_chain.end() - 1))->x;
-        p2.y = (*(arc_list[0].pix_chain.end() - 1))->y;
+        p1.x = (*arc_list[0].pix_chain->begin())->x;
+        p1.y = (*arc_list[0].pix_chain->begin())->y;
+        p2.x = (*(arc_list[0].pix_chain->end() - 1))->x;
+        p2.y = (*(arc_list[0].pix_chain->end() - 1))->y;
 		//先把第一个圆弧放进去
-        pix_chain.insert(pix_chain.end(), (arc_iter->pix_chain).begin(), (arc_iter->pix_chain).end());
+        pix_chain.insert(pix_chain.end(), (*arc_iter->pix_chain).begin(), (*arc_iter->pix_chain).end());
 		compute_circle_centre(pix_chain.begin(), pix_chain.size(), r, R, o);
-        circle.arc_chain.push_back(*arc_iter);
-        (circle.pix_chain) = pix_chain;
+        circle.arc_chain->push_back(*arc_iter);
+        (*circle.pix_chain) = pix_chain;
 		circle.o = o;
 		circle.r = R;
 		arc_list.erase(arc_iter);
@@ -907,12 +935,12 @@ void ExtendArcToCircle(vector<link_arc> arc_list, vector<link_circle>& circle_li
 		while (arc_list.size()!=0)
 		{
 			arc_iter = find_the_nearest(p1, p2, arc_iter, arc_end);
-            pix_chain.insert(pix_chain.end(), (arc_iter->pix_chain).begin(), (arc_iter->pix_chain).end());
+            pix_chain.insert(pix_chain.end(), (*arc_iter->pix_chain).begin(), (*arc_iter->pix_chain).end());
 			compute_circle_centre(pix_chain.begin(), pix_chain.size(), r, R, o);
 			if (r < 1.5)
 			{
-                circle.arc_chain.push_back(*arc_iter);
-                (circle.pix_chain) = pix_chain;
+                circle.arc_chain->push_back(*arc_iter);
+                (*circle.pix_chain) = pix_chain;
 				circle.o = o;
 				circle.r = R;
 				updata_the_end(p1, p2, arc_iter);
@@ -922,7 +950,7 @@ void ExtendArcToCircle(vector<link_arc> arc_list, vector<link_circle>& circle_li
 			}
 			else
 			{
-                pix_chain = (circle.pix_chain);
+                pix_chain = (*circle.pix_chain);
 				arc_copy_list.push_back(*arc_iter);
 				arc_list.erase(arc_iter);
 				arc_iter = arc_list.begin();
@@ -935,7 +963,7 @@ void ExtendArcToCircle(vector<link_arc> arc_list, vector<link_circle>& circle_li
 	}
 }
 
-void compute_ellips(vector<shared_ptr<link_pix>> pix_chain, float* a, float &r)
+void compute_ellips(vector<link_pix*> pix_chain, float* a, float &r)
 {
 	float c[36] = {0, 0, 2, 0, 0, 0, 0, -1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 	Mat C(6, 6, CV_32FC1, c);
@@ -1012,24 +1040,29 @@ void ExtendArcToEllips(vector<link_arc> arc_list, vector<link_ellips>& ellips_li
 	{
 		//创建一个新圆
 		link_ellips ellips;
+        ellips.arc_chain = new vector<link_arc>;
+        ellips.pix_chain = new vector<link_pix*>;
+
+        arc_v2free.push_back(ellips.arc_chain);
+        pix_v2free.push_back(ellips.pix_chain);
 		vector<link_arc>::iterator arc_iter = arc_list.begin();
 		vector<link_arc>::iterator arc_end = arc_list.end();
 		vector<link_arc> arc_copy_list;
-        vector<shared_ptr<link_pix>> pix_chain;
+        vector<link_pix*> pix_chain;
 		float r = 0;
 		float A[6] = { 0 };
 
 		//记录圆弧的两个端点
 		Point p1, p2;
-        p1.x = (*arc_list[0].pix_chain.begin())->x;
-        p1.y = (*arc_list[0].pix_chain.begin())->y;
-        p2.x = (*(arc_list[0].pix_chain.end() - 1))->x;
-        p2.y = (*(arc_list[0].pix_chain.end() - 1))->y;
+        p1.x = (*arc_list[0].pix_chain->begin())->x;
+        p1.y = (*arc_list[0].pix_chain->begin())->y;
+        p2.x = (*(arc_list[0].pix_chain->end() - 1))->x;
+        p2.y = (*(arc_list[0].pix_chain->end() - 1))->y;
 		//先把第一个圆弧放进去
-        pix_chain.insert(pix_chain.end(), (arc_iter->pix_chain).begin(), (arc_iter->pix_chain).end());
+        pix_chain.insert(pix_chain.end(), (*arc_iter->pix_chain).begin(), (*arc_iter->pix_chain).end());
 		compute_ellips(pix_chain, ellips.A, r);
-        ellips.arc_chain.push_back(*arc_iter);
-        (ellips.pix_chain) = pix_chain;
+        ellips.arc_chain->push_back(*arc_iter);
+        (*ellips.pix_chain) = pix_chain;
 		//去掉第一个圆弧
 		arc_list.erase(arc_iter);
 		arc_iter = arc_list.begin();
@@ -1038,12 +1071,12 @@ void ExtendArcToEllips(vector<link_arc> arc_list, vector<link_ellips>& ellips_li
 		while (arc_list.size() != 0)
 		{
 			arc_iter = find_the_nearest(p1, p2, arc_iter, arc_end);
-            pix_chain.insert(pix_chain.end(), (arc_iter->pix_chain).begin(), (arc_iter->pix_chain).end());
+            pix_chain.insert(pix_chain.end(), (*arc_iter->pix_chain).begin(), (*arc_iter->pix_chain).end());
 			compute_ellips(pix_chain, A, r);
 			if (r < 1.5)
 			{
-                ellips.arc_chain.push_back(*arc_iter);
-                (ellips.pix_chain) = pix_chain;
+                ellips.arc_chain->push_back(*arc_iter);
+                (*ellips.pix_chain) = pix_chain;
 				for (int i = 0; i < 6; i++)
 				{
 					ellips.A[i] = A[i];
@@ -1055,7 +1088,7 @@ void ExtendArcToEllips(vector<link_arc> arc_list, vector<link_ellips>& ellips_li
 			}
 			else
 			{
-                pix_chain = (ellips.pix_chain);
+                pix_chain = (*ellips.pix_chain);
 				arc_copy_list.push_back(*arc_iter);
 				arc_list.erase(arc_iter);
 				arc_iter = arc_list.begin();
@@ -1135,6 +1168,16 @@ float helmholtz(vector<link_circle>::iterator circle_list_iter, Mat sobelx, Mat 
 
 std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 {
+    pix2free.clear();
+    line2free.clear();
+    seg2free.clear();
+
+    arc2free.clear();
+    pix_v2free.clear();
+    line_v2free.clear();
+    arc_v2free.clear();
+
+
     shortestline = log(gray.rows);
 //	Mat gray;
 //	cvtColor(image, gray, CV_BGR2GRAY);
@@ -1199,13 +1242,17 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 
 	//连接锚点，画边缘
 
-    shared_ptr<link_pix> pix_now = NULL;
+    link_seg* seg_head, *seg_now;
+    link_pix* pix_now = NULL;
 
 	//创建边缘集合链表的表头
-    auto seg_head = make_shared<link_seg>();
-    auto seg_now = make_shared<link_seg>();
-    seg_now->next = make_shared<link_seg>();            //创建新的边缘
-	seg_now = seg_now->next;                                     //指针指过去
+    seg_head = seg_now = (link_seg*)malloc(sizeof(link_seg));
+    seg2free.push_back(seg_now);
+
+    seg_now->next = (link_seg*)malloc(sizeof(link_seg));            //创建新的边缘
+    seg2free.push_back(seg_now->next);
+
+    seg_now = seg_now->next;                                     //指针指过去
 	seg_now->next = NULL;
 
 	//自动描绘边缘
@@ -1215,16 +1262,20 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 		{
 			if (edge.at<uchar>(i, j) == 128)                      //如果找到了锚点则进行下一步
 			{
-                seg_now->addr = make_shared<link_pix>();  //创建该边缘中的第一个像素点
-				pix_now = seg_now->addr;                           //像素指针指向刚才创建的第一个点
+                seg_now->addr = (link_pix*)malloc(sizeof(link_pix));  //创建该边缘中的第一个像素点
+                pix2free.push_back(seg_now->addr);
+
+                pix_now = seg_now->addr;                           //像素指针指向刚才创建的第一个点
 
 				int k = 0;
 				k = rout(i, j, mag, edge, dir, pix_now, seg_now);
 				if (k > shortestline)
 				{
 					seg_now->addr = pix_now;
-                    seg_now->next = make_shared<link_seg>();            //创建新的边缘
-					seg_now = seg_now->next;                                     //指针指过去
+                    seg_now->next = (link_seg*)malloc(sizeof(link_seg));            //创建新的边缘
+                    seg2free.push_back(seg_now->next);
+
+                    seg_now = seg_now->next;                                     //指针指过去
 					seg_now->next = NULL;
 					seg_now->addr = NULL;
 				}
@@ -1243,13 +1294,15 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 	seg_now = seg_head->next;
 	for (; seg_now->addr != NULL; seg_now = seg_now->next)
 	{
-        vector<shared_ptr<link_pix>> pix_chain;
+        vector<link_pix*>* pix_chain = new vector<link_pix*>;
+        pix_v2free.push_back(pix_chain);
+
 		pix_now = seg_now->addr;
-        (pix_chain).push_back(pix_now);
+        (*pix_chain).push_back(pix_now);
 		BGR_edge.at<Vec3b>(pix_now->x, pix_now->y)[2] = 255;
 		do{
 			pix_now = pix_now->next;
-            (pix_chain).push_back(pix_now);
+            (*pix_chain).push_back(pix_now);
 			BGR_edge.at<Vec3b>(pix_now->x, pix_now->y)[2] = 255;
 		} while (pix_now->ifend != 0);
         seg_now->pix_chain = pix_chain;
@@ -1263,8 +1316,9 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 	seg_now = seg_head->next;
 	while (seg_now->addr != NULL)
 	{
-//        (seg_now->line_chain) = make_shared<vector<shared_ptr<link_line>>>();
-        draw_line((seg_now->pix_chain).begin(), (seg_now->pix_chain).size(), seg_now->line_chain);
+        (seg_now->line_chain) = new vector<link_line*>;
+        line_v2free.push_back(seg_now->line_chain);
+        draw_line((*seg_now->pix_chain).begin(), (*seg_now->pix_chain).size(), *seg_now->line_chain);
 		//		seg_now->line_chain = line_chain;
 		seg_now = seg_now->next;
 	}
@@ -1275,15 +1329,15 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 	seg_now = seg_head->next;
 	while (seg_now->addr != NULL)
 	{
-        draw_arc((seg_now->line_chain).begin(), (seg_now->line_chain).size(), arc_list);
+        draw_arc((*seg_now->line_chain).begin(), (*seg_now->line_chain).size(), arc_list);
 		seg_now = seg_now->next;
 	}
 
 	BGR_edge = 0;
 	for (vector<link_arc>::iterator arc_iter = arc_list.begin(); arc_iter != arc_list.end(); arc_iter++)
 	{
-        vector<shared_ptr<link_pix>>::iterator pix_end = (arc_iter->pix_chain).end();
-        for (vector<shared_ptr<link_pix>>::iterator pix_iter = (arc_iter->pix_chain).begin()
+        vector<link_pix*>::iterator pix_end = (*arc_iter->pix_chain).end();
+        for (vector<link_pix*>::iterator pix_iter = (*arc_iter->pix_chain).begin()
 			; pix_iter != pix_end; pix_iter++)
 			BGR_edge.at<Vec3b>((*pix_iter)->x, (*pix_iter)->y)[2] = 255;
 	}
@@ -1298,15 +1352,15 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 	vector<link_arc>::iterator arc_candi_list_iter = arc_candi_list.begin();
 	vector<link_arc>::iterator arc_candi_list_end = arc_candi_list.end();
 	for (; arc_candi_list_iter != arc_candi_list_end; arc_candi_list_iter++)
-        select_arc(arc_candi_list_iter, (arc_candi_list_iter->line_chain).begin(), (arc_candi_list_iter->pix_chain).begin(),
-        (arc_candi_list_iter->line_chain).size(), arc_list);
+        select_arc(arc_candi_list_iter, (*arc_candi_list_iter->line_chain).begin(), (*arc_candi_list_iter->pix_chain).begin(),
+        (*arc_candi_list_iter->line_chain).size(), arc_list);
 
 
 	BGR_edge = 0;
 	for (vector<link_arc>::iterator arc_iter = arc_list.begin(); arc_iter != arc_list.end(); arc_iter++)
 	{
-        vector<shared_ptr<link_pix>>::iterator pix_end = (arc_iter->pix_chain).end();
-        for (vector<shared_ptr<link_pix>>::iterator pix_iter = (arc_iter->pix_chain).begin(); pix_iter != pix_end; pix_iter++)
+        vector<link_pix*>::iterator pix_end = (*arc_iter->pix_chain).end();
+        for (vector<link_pix*>::iterator pix_iter = (*arc_iter->pix_chain).begin(); pix_iter != pix_end; pix_iter++)
 			BGR_edge.at<Vec3b>((*pix_iter)->x, (*pix_iter)->y)[2] = 255;
 	}
 //     imshow("arc", BGR_edge);                                  //显示确定的圆弧
@@ -1319,11 +1373,17 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 	while (arc_list.size() != 0)
 	{
 		link_circle circle;                                            //创建一个新圆
+        circle.arc_chain = new vector<link_arc>;
+        circle.pix_chain = new vector<link_pix*>;
+
+        arc_v2free.push_back(circle.arc_chain);
+        pix_v2free.push_back(circle.pix_chain);
+
 		float radius = arc_list[0].r;                                   //记录第一个圆弧的圆心和半径
 		Point center = arc_list[0].o;
 
 		vector<link_arc>::iterator iter = arc_list.begin();
-        (circle.arc_chain).push_back(*iter);                           //将第一个圆弧插入新建的圆的第一个位置
+        (*circle.arc_chain).push_back(*iter);                           //将第一个圆弧插入新建的圆的第一个位置
 		iter = arc_list.erase(iter);                                          //将已插入的圆弧删除		
 		vector<link_arc>::iterator end = arc_list.end();
 
@@ -1332,7 +1392,7 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 		{
 			if (pow(iter->o.x - center.x, 2) + pow(iter->o.y - center.y, 2) < radius*radius*0.0625 && abs(iter->r - radius) < radius*0.25)
 			{
-                (circle.arc_chain).push_back(*iter);
+                (*circle.arc_chain).push_back(*iter);
 				iter = arc_list.erase(iter);
 				end = arc_list.end();
 			}
@@ -1349,7 +1409,7 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 	vector<link_circle>::iterator circle_candi_list_end = circle_candi_list.end();
 	for (; circle_candi_list_iter != circle_candi_list_end; circle_candi_list_iter++)
 	{
-        ExtendArcToCircle((circle_candi_list_iter->arc_chain), circle_list);
+        ExtendArcToCircle((*circle_candi_list_iter->arc_chain), circle_list);
 	}
 
 	//delete the circle which is too short
@@ -1359,10 +1419,9 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 
 	for (; circle_list_iter != circle_list_end;)
 	{
-        if (circle_list_iter->pix_chain.size() < pi*0.75*circle_list_iter->r)                  //不够半圈，放回到圆弧列表，下一步找椭圆
+        if (circle_list_iter->pix_chain->size() < pi*0.75*circle_list_iter->r)                  //不够半圈，放回到圆弧列表，下一步找椭圆
 		{
-            arc_list.insert(arc_list.end(), circle_list_iter->arc_chain.begin(),
-                            circle_list_iter->arc_chain.end());
+            arc_list.insert(arc_list.end(), circle_list_iter->arc_chain->begin(), circle_list_iter->arc_chain->end());
 			circle_list_iter = circle_list.erase(circle_list_iter);
 			circle_list_end = circle_list.end();
 		}
@@ -1401,6 +1460,31 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 	}
 //     imshow("gray_circle", gray);
 //     waitKey(0);
+
+    for(auto& ptr: pix2free){
+        free(ptr);
+    }
+    for(auto& ptr: line2free){
+        free(ptr);
+    }
+    for(auto& ptr: seg2free){
+        free(ptr);
+    }
+
+
+    for(auto& ptr: arc2free){
+        delete ptr;
+    }
+    for(auto& ptr: pix_v2free){
+        delete ptr;
+    }
+    for(auto& ptr: line_v2free){
+        delete ptr;
+    }
+    for(auto& ptr: arc_v2free){
+        delete ptr;
+    }
+
 	return centers;
 }
 }
