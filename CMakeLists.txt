@@ -8,15 +8,31 @@ SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
 SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2 -Wall")
 
 # Find catkin
-find_package(catkin REQUIRED COMPONENTS rospy roscpp)
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  rospy
+  cv_bridge
+  image_transport
+  camera_info_manager
+  sensor_msgs
+)
+
 catkin_package(
   LIBRARIES ${PROJECT_NAME}
   INCLUDE_DIRS include
   DEPENDS ${WEITU_LIBS} ${OpenCV_LIBS})
 
+
+find_package(OpenCV)
+
+include_directories(
+  include ${catkin_INCLUDE_DIRS}${INCLUDE_DIRECTORIES}
+  ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
+)
+
 # camera env
 INCLUDE_DIRECTORIES(${INCLUDE_DIRECTORIES}
-    ${OpenCV_INCLUDE_DIRS}
     /opt/iCentral/iCentral/include)
 LINK_DIRECTORIES(${LINK_DIRECTORIES}
     /opt/iCentral/iCentral/lib)
@@ -53,7 +69,14 @@ add_executable(${PROJECT_NAME}_test test/test.cpp)
 add_dependencies(${PROJECT_NAME}_test ${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}_test ${PROJECT_NAME})
 
-
+add_executable(weitu_ros
+  src/weitu_ros.cpp
+)
+add_dependencies(weitu_ros ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME})
+target_link_libraries(weitu_ros
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+)
 
 #############
 ## Install ##
