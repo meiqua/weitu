@@ -8,14 +8,7 @@ SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
 SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2 -Wall")
 
 # Find catkin
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rospy
-  cv_bridge
-  image_transport
-  camera_info_manager
-  sensor_msgs
-)
+find_package(catkin REQUIRED COMPONENTS roscpp rospy cv_bridge image_transport camera_info_manager sensor_msgs tf)
 
 catkin_package(
   LIBRARIES ${PROJECT_NAME}
@@ -74,6 +67,15 @@ add_executable(weitu_ros
 )
 add_dependencies(weitu_ros ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME})
 target_link_libraries(weitu_ros
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+)
+
+add_executable(weitu_finder
+  src/weitu_finder.cpp
+)
+add_dependencies(weitu_finder ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME})
+target_link_libraries(weitu_finder
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
 )
