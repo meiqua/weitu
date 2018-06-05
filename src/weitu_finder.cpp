@@ -7,7 +7,7 @@
 double qr_dist = 0;
 std::string camera_link = "camera_link";
 std::string camera_marker = "camera_marker";
-std:string path_to_cam_info = "";
+std::string path_to_cam_info = "";
 
 sensor_msgs::CameraInfo get_default_camera_info_from_image(sensor_msgs::ImagePtr img)
 {
