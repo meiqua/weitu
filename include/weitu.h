@@ -65,6 +65,10 @@ cv::Point find(cv::Mat src);
 
 }
 
+namespace API {
+    std::vector<double> find_hole(double z, double timeout = 3, int cam_id = 0);
+}
+
 
 
 #endif

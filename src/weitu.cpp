@@ -333,7 +333,7 @@ float D_data[] = {
     cv::Mat K_pnp = cv::Mat(3,3,CV_32FC1,K_data);
     cv::Mat D_pnp = cv::Mat(1,5,CV_32FC1,D_data);
 
-    std::vector<double> find_hole(double z, double timeout = 3, int cam_id = 0){
+    std::vector<double> find_hole(double z, double timeout, int cam_id){
         std::vector<double> xy;
         cv::Point hole_img_point;
         weitu::Camera camera;
