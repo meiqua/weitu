@@ -321,3 +321,44 @@ cv::Point find(cv::Mat src){
 }
 }
 
+namespace API {
+float K_data[] = {
+5502.067210, 0.000000, 1184.077158,
+0.000000, 5481.872057, 1098.097571,
+0.000000, 0.000000, 1.000000
+};
+float D_data[] = {
+-0.338621, 0.168072, -0.001953, -0.001642, 0.000000
+};
+    cv::Mat K_pnp = cv::Mat(3,3,CV_32FC1,K_data);
+    cv::Mat D_pnp = cv::Mat(1,5,CV_32FC1,D_data);
+
+    std::vector<double> find_hole(double z, double timeout = 3, int cam_id = 0){
+        std::vector<double> xy;
+        cv::Point hole_img_point;
+        weitu::Camera camera;
+        camera.open(cam_id);
+        Timer timer;
+        while (timer.elapsed()<timeout) {
+            cv::Mat rgb = camera.get();
+            if(!rgb.empty()){
+                cv::undistort(rgb, rgb, K_pnp, D_pnp);
+                hole_img_point = hole_detect::find(rgb);
+                if(hole_img_point.x == 0) continue;
+                break;
+            }else{
+                std::cout << "no img" << std::endl;
+            }
+        }
+        if(hole_img_point.x > 0){
+            cv::Point& p = hole_img_point;
+            float img_p_data[] = {p.x, p.y, 1};
+            cv::Mat img_p = cv::Mat(3,1,CV_32FC1, img_p_data);
+            cv::Mat world_p = K_pnp.inv()*img_p;
+            double factor_s = z/world_p.at<float>(2,0);
+            xy.push_back(world_p.at<float>(0,0)*factor_s);
+            xy.push_back(world_p.at<float>(1,0)*factor_s);
+        }
+        return xy; 
+    }
+}
