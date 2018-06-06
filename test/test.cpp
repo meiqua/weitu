@@ -117,7 +117,8 @@ void camera_hole_test(){
 
 int main()
 {	
-    camera_hole_test();
+    camera_marker_test();
+    // camera_hole_test();
 //    hole_test();
 
     return 0;

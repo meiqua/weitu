@@ -9,7 +9,7 @@ void FinderPatternFinder::find()
 {
     int maxI = src.rows;
     int maxJ = src.cols;
-    int iSkip = 1;
+    int iSkip = 2;
 
     int stateCount[5];
     for(int i=iSkip-1;i<maxI;i +=iSkip){
@@ -81,7 +81,7 @@ bool FinderPatternFinder::foundPatternCross(int *stateCount)
       return false;
     }
     float moduleSize = totalModuleSize / 7.0f;
-    float maxVariance = moduleSize / 3.0f;
+    float maxVariance = moduleSize / 2.0f;
     // Allow less than 50% variance from 1-1-3-1-1 proportions
     return
         std::abs(moduleSize - stateCount[0]) < maxVariance &&

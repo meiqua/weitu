@@ -16,6 +16,10 @@ public:
     int count;
     int x;
     int y;
+
+    bool operator<(const FinderPattern& rhs) const{
+      return count > rhs.count;
+    }
 };
 
 #endif // FINDERPATTERN_H

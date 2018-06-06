@@ -206,7 +206,7 @@ cv::Mat Camera::get()
         return cv::Mat();
     }
 
-    ret = pStreamSource->getFrame(pStreamSource, &pFrame, 1000);
+    ret = pStreamSource->getFrame(pStreamSource, &pFrame, 100);
     if (ret < 0){
         printf("getFrame  fail.\n");
         return cv::Mat();
@@ -258,14 +258,23 @@ std::vector<FinderPattern> find(cv::Mat src){
     graySrc.convertTo(graySrc,CV_8UC1);
 
     cv::Mat binarySrc;
+    int blockSize = graySrc.rows/8;
+    if(blockSize%2==0) blockSize ++;
 
-//    cv::threshold(graySrc, binarySrc, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-    cv::threshold(graySrc, binarySrc, 127, 255, CV_THRESH_BINARY);
+   cv::threshold(graySrc, binarySrc, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+    // cv::threshold(graySrc, binarySrc, 127, 255, CV_THRESH_BINARY);
+    // cv::adaptiveThreshold(graySrc, binarySrc, 255, cv::ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, blockSize, 0);
+
+    // cv::pyrDown(binarySrc, binarySrc);
+    // cv::pyrDown(binarySrc, binarySrc);
+    // cv::imshow("binary", binarySrc);
+    // cv::waitKey(1);
 
     FinderPatternFinder finder(binarySrc);
     finder.find();
 
     std::vector<FinderPattern> pattern = finder.possibleCenters;
+    std::sort (pattern.begin(), pattern.end());
     return pattern;
 }
 }

@@ -4,116 +4,115 @@
 #include "weitu.h"
 #include <tf/transform_broadcaster.h>
 
-double qr_dist = 0;
-std::string camera_link = "camera_link";
-std::string camera_marker = "camera_marker";
-std::string path_to_cam_info = "";
-
-sensor_msgs::CameraInfo get_default_camera_info_from_image(sensor_msgs::ImagePtr img)
+class Timer
 {
-    double fx = 5.54893554e+03;
-    double fy = 5.54163511e+03;
-    double tx = 1.21751967e+03;
-    double ty = 1.18197642e+03;
+public:
+    Timer() : beg_(clock_::now()) {}
+    void reset() { beg_ = clock_::now(); }
+    double elapsed() const {
+        return std::chrono::duration_cast<second_>
+            (clock_::now() - beg_).count(); }
+    void out(std::string message = ""){
+        double t = elapsed();
+        std::cout << message << "  elasped time:" << t << "s" << std::endl;
+        reset();
+    }
+private:
+    typedef std::chrono::high_resolution_clock clock_;
+    typedef std::chrono::duration<double, std::ratio<1> > second_;
+    std::chrono::time_point<clock_> beg_;
+};
 
-    sensor_msgs::CameraInfo cam_info_msg;
-    cam_info_msg.header.frame_id = img->header.frame_id;
-    // Fill image size
-    cam_info_msg.height = img->height;
-    cam_info_msg.width = img->width;
-    ROS_INFO_STREAM("The image width is: " << img->width);
-    ROS_INFO_STREAM("The image height is: " << img->height);
-    // Add the most common distortion model as sensor_msgs/CameraInfo says
-    cam_info_msg.distortion_model = "plumb_bob";
-    // Don't let distorsion matrix be empty
-    cam_info_msg.D.resize(5, 0.0);
-    // Give a reasonable default intrinsic camera matrix
-    cam_info_msg.K = boost::assign::list_of(fx)(0.0)(tx)(0.0)(fy)(ty)(0.0)(0.0)(1.0);
-    // Give a reasonable default rectification matrix
-    cam_info_msg.R = boost::assign::list_of(1.0)(0.0)(0.0)(0.0)(1.0)(0.0)(0.0)(0.0)(1.0);
-    // Give a reasonable default projection matrix
-    cam_info_msg.P = boost::assign::list_of(fx)(0.0)(tx)(0.0)(0.0)(fy)(ty)(0.0)(0.0)(0.0)(1.0)(0.0);
-    return cam_info_msg;
-}
+double qr_dist = 0.031;
+std::string camera_link = "camera_link";
+// std::string camera_link = "robot1_camera_eef_link";
+
+std::string camera_marker = "camera_marker";
+// std::string path_to_cam_info = "/tmp/calibrationdata/ost.yaml";
+
+float K_data[] = {
+5502.067210, 0.000000, 1184.077158,
+0.000000, 5481.872057, 1098.097571,
+0.000000, 0.000000, 1.000000
+};
+float D_data[] = {
+-0.338621, 0.168072, -0.001953, -0.001642, 0.000000
+};
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "weitu_finder_publisher");
     ros::NodeHandle _nh("~"); // to get the private params
 
-    std::string camera_name;
-    _nh.param("camera_name", camera_name, std::string("camera"));
-    ROS_INFO_STREAM("Camera name: " << camera_name);
-
-    std::string frame_id;
-    _nh.param("frame_id", frame_id, std::string("camera_link"));
-    ROS_INFO_STREAM("Publishing with frame_id: " << frame_id);
-
-    sensor_msgs::CameraInfo cam_info_msg;
-    std_msgs::Header header;
-    header.frame_id = frame_id;
-    camera_info_manager::CameraInfoManager cam_info_manager(_nh, camera_name, path_to_cam_info);
-    // Get the saved camera info if any
-    cam_info_msg = cam_info_manager.getCameraInfo();
-    cam_info_msg.header = header;
-
-    cv::Mat K_pnp;
-    cv::Mat D_pnp;
+    cv::Mat K_pnp = cv::Mat(3,3,CV_32FC1,K_data);
+    cv::Mat D_pnp = cv::Mat(1,5,CV_32FC1,D_data);
     weitu::Camera camera;
     camera.open(0);
-    while (1)
-    {
-        cv::Mat rgb = camera.get();
-        if (!rgb.empty())
-        {
-            // camera info
-            if (cam_info_msg.distortion_model == "")
-            {
-                sensor_msgs::ImagePtr msg;
-                msg = cv_bridge::CvImage(header, "mono8", frame).toImageMsg();
-                cam_info_msg = get_default_camera_info_from_image(msg);
-                cam_info_manager.setCameraInfo(cam_info_msg);
-            }
-            K_pnp = cv::Mat(3,3,CV_32FC1,cam_info_msg.K);
-            D_pnp = cv::Mat(1,5,CV_32FC1,cam_info_msg.D);
-            break;
-        }
-        else
-        {
-            ROS_INFO("no img");
-        }
-    }
 
     tf::TransformBroadcaster br;
     ros::Rate r(20);
+
+    // Timer timer;
     while (_nh.ok())
     {
+        r.sleep();
         cv::Mat frame = camera.get();
+
+        // if(!frame.empty()){
+        // cv::Mat frame_;
+        // cv::pyrDown(frame, frame_);
+        // cv::pyrDown(frame_,frame_);
+        // cv::imshow("frame", frame_);
+        // cv::waitKey(1);
+        // }
+
         // if (pub.getNumSubscribers() > 0)
+        // if(false)
+        // timer.reset();
         {
             if (!frame.empty())
             {
                 std::vector<FinderPattern> pattern = qr_pattern::find(frame);
-                if (pattern.size() != 3)
-                {
-                    continue;
-                }
 
-                std::vector<cv::Point2f> p4(4);
+               std::vector<cv::Point2f> p4(4);
+                cv::Mat to_show = frame.clone();
+                cv::cvtColor(to_show, to_show, CV_GRAY2BGR);
                 for (int i = 0; i < pattern.size(); i++)
                 {
+                    if(i<3){
                     int centerRow = int(pattern[i].getY());
                     int centerCol = int(pattern[i].getX());
                     p4[i] = cv::Point2f(centerCol, centerRow);
+
+                cv::line(to_show, cv::Point(centerCol, centerRow-80), cv::Point(centerCol, centerRow+80)
+                        , cv::Scalar(0, 0, 255), 2);
+                cv::line(to_show, cv::Point(centerCol-80, centerRow), cv::Point(centerCol+80, centerRow)
+                        , cv::Scalar(0, 0, 255), 2);
+                    }
                 }
+                cv::pyrDown(to_show, to_show);
+                cv::pyrDown(to_show, to_show);
+                cv::imshow("test", to_show);
+                cv::waitKey(1);
+
+                // timer.out("1 time");
+
+                if (pattern.size() < 3){
+                    // ROS_INFO("pattern not found!");
+                    continue;
+                }
+                if(pattern[2].count < pattern[0].count/2){
+                    continue;
+                }
+
 
                 // find top left
                 std::vector<std::vector<cv::Point2f>> v3;
-                for (int i = 0; i < pattern.size(); i++)
+                for (int i = 0; i < 3; i++)
                 {
                     auto p_check = p4[i];
                     std::vector<cv::Point2f> v;
-                    for (int j = 0; j < pattern.size(); j++)
+                    for (int j = 0; j < 3; j++)
                     {
                         if (j != i)
                         {
@@ -127,11 +126,11 @@ int main(int argc, char **argv)
                 for (int i = 0; i < v3.size(); i++)
                 {
                     auto &v = v3[i];
-                    double cos_value = v[0].dot(v[1]) / v[0].norm() / v[1].norm();
+                    double cos_value = v[0].dot(v[1]) / std::sqrt(v[0].x*v[0].x+v[0].y*v[0].y) / std::sqrt(v[1].x*v[1].x+v[1].y*v[1].y);
                     if (cos_value < min_cos)
                     {
                         min_cos = cos_value;
-                        topleft_i = min_cos;
+                        topleft_i = i;
                     }
                 }
                 auto &topleft_v = v3[topleft_i];
@@ -165,29 +164,41 @@ int main(int argc, char **argv)
                 }
 
                 // img points
-                std::vector<cv::Point2f> p4_ordered(4);
+                std::vector<cv::Point2d> p4_ordered(4);
                 p4_ordered[0] = p4[topleft_i];
                 p4_ordered[1] = p4[topright_i];
                 p4_ordered[2] = p4[bottomleft_i];
                 p4_ordered[3] = p4[1] + p4[2] - p4[0];
 
                 //obj points
-                std::vector<cv::Point3f> p4w_ordered(4);
-                p4w_ordered[0] = cv::Point2d(-1, -1, 0);
-                p4w_ordered[1] = cv::Point2d(1, -1, 0);
-                p4w_ordered[2] = cv::Point2d(-1, 1, 0);
-                p4w_ordered[3] = cv::Point2d(1, 1, 0);
+                std::vector<cv::Point3d> p4w_ordered(4);
+                p4w_ordered[0] = cv::Point3d(-1, -1, 0);
+                p4w_ordered[1] = cv::Point3d(1, -1, 0);
+                p4w_ordered[2] = cv::Point3d(-1, 1, 0);
+                p4w_ordered[3] = cv::Point3d(1, 1, 0);
                 for(auto& p: p4w_ordered){
                     p *= qr_dist/2;
                 }
 
-                std::vector<float> rvec, tvec, rotM; // use vector for easy access
-                cv::solvePnP(cv::Mat(p4w_ordered), cv::Mat(p4_ordered), K_pnp, D_pnp, rvec, tvec, false, SOLVEPNP_P3P);
+                cv::Mat rvec, tvec, rotM; // use vector for easy access
+                cv::Mat p4w_mat, p4_mat;
+                cv::Mat(p4w_ordered).convertTo(p4w_mat, CV_64F);
+                cv::Mat(p4_ordered).convertTo(p4_mat, CV_64F);
+
+                // timer.out("2 time");
+                cv::solvePnP(p4w_mat, p4_mat, K_pnp, D_pnp, rvec, tvec, false, cv::SOLVEPNP_P3P);
+                // ROS_INFO("here we are!");
+                
                 cv::Rodrigues(rvec, rotM);
+                // rotM.convertTo(rotM, CV_64F);
+                // tvec.convertTo(rvec, CV_64F);
 
                 tf::Transform transform;
-                transform.setOrigin(tf::Vector3(tvec[0], tvec[1], tvec[2]));
-                tf::Matrix3x3 tf_rotM(rotM[0], rotM[1], rotM[2], rotM[3], rotM[4], rotM[5], rotM[6], rotM[7], rotM[8]);
+                transform.setOrigin(tf::Vector3(tvec.at<double>(0,0), tvec.at<double>(1,0), tvec.at<double>(2,0)));
+                tf::Matrix3x3 tf_rotM(
+                rotM.at<double>(0,0), rotM.at<double>(0,1), rotM.at<double>(0,2),
+                rotM.at<double>(1,0), rotM.at<double>(1,1), rotM.at<double>(1,2),
+                rotM.at<double>(2,0), rotM.at<double>(2,1), rotM.at<double>(2,2));
                 transform.setBasis(tf_rotM);
                 // transform = transform.inverse();
                 br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), camera_link, camera_marker));
@@ -196,8 +207,7 @@ int main(int argc, char **argv)
             {
                 ROS_INFO("empty img!");
             }
-            ros::spinOnce();
+            // ros::spinOnce();
         }
-        r.sleep();
     }
 }
