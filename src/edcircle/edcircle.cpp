@@ -1187,7 +1187,7 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 	/******************用EDPF提取边缘*********************/
 
 	//高斯平滑
-	GaussianBlur(gray, gray, Size(5, 5), 1);
+	// GaussianBlur(gray, gray, Size(5, 5), 1);
 
 	//计算梯度
 	Mat sobelx, sobely;

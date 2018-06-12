@@ -297,6 +297,7 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v) {
 
 
 cv::Point find(cv::Mat src){
+    
     if(src.channels()==3){
         cv::cvtColor(src, src, CV_BGR2GRAY);
     }
@@ -308,20 +309,39 @@ cv::Point find(cv::Mat src){
 
     cv::Point c = {src.cols/2, src.rows/2};
     cv::Point best_p;
+    int best_r;
     double closest = std::numeric_limits<double>::max();
-    for(auto& p: centers){
+    for(int i=0; i<centers.size(); i++){
+        auto& p = centers[i];
         auto p2c = p-c;
         double dist = p2c.x*p2c.x + p2c.y*p2c.y;
         if(dist<closest){
             closest = dist;
             best_p = p;
+            best_r = int(radiuses[i]);
         }
+    }
+
+    bool vis_result = true;
+    if(vis_result){
+        cv::Mat to_show;
+        cv::cvtColor(src, to_show, CV_GRAY2BGR);
+        for(int i=0; i<centers.size(); i++){
+            cv::circle(to_show, centers[i], radiuses[i], {0, 0, 255}, 2);
+        }
+        cv::line(to_show, cv::Point(best_p.x, best_p.y-best_r/2), cv::Point(best_p.x, best_p.y+best_r/2)
+                        , cv::Scalar(0, 255, 0), 2);
+        cv::line(to_show, cv::Point(best_p.x-best_r/2, best_p.y), cv::Point(best_p.x+best_r/2, best_p.y)
+                        , cv::Scalar(0, 255, 0), 2);
+        // cv::pyrDown(to_show, to_show);
+        cv::imshow("hole detect", to_show);
+        cv::waitKey(3000);
     }
     return best_p;
 }
-}
 
-namespace API {
+
+std::vector<double> find_hole(double z, double timeout, int cam_id){
 float K_data[] = {
 5502.067210, 0.000000, 1184.077158,
 0.000000, 5481.872057, 1098.097571,
@@ -333,32 +353,37 @@ float D_data[] = {
     cv::Mat K_pnp = cv::Mat(3,3,CV_32FC1,K_data);
     cv::Mat D_pnp = cv::Mat(1,5,CV_32FC1,D_data);
 
-    std::vector<double> find_hole(double z, double timeout, int cam_id){
-        std::vector<double> xy;
-        cv::Point hole_img_point;
-        weitu::Camera camera;
-        camera.open(cam_id);
-        Timer timer;
-        while (timer.elapsed()<timeout) {
-            cv::Mat rgb = camera.get();
-            if(!rgb.empty()){
-                cv::undistort(rgb, rgb, K_pnp, D_pnp);
-                hole_img_point = hole_detect::find(rgb);
-                if(hole_img_point.x == 0) continue;
-                break;
-            }else{
-                std::cout << "no img" << std::endl;
-            }
+    std::vector<double> xy;
+    cv::Point hole_img_point = {0, 0};
+        
+    Timer timer;
+    weitu::Camera camera;
+    camera.open(cam_id);
+        
+    while (timer.elapsed()<timeout) {
+        cv::Mat rgb = camera.get();
+        if(!rgb.empty()){
+            // cv::undistort(rgb, rgb, K_pnp, D_pnp);
+            // cv::Mat src = rgb.clone();
+            // cv::Rect roi(rgb.rows/4, rgb.cols/4, rgb.rows/2, rgb.cols/2);
+            // rgb = rgb(roi);
+            cv::pyrDown(rgb, rgb);
+            hole_img_point = hole_detect::find(rgb);
+            if(hole_img_point.x == 0) continue;
+            break;
+        }else{
+            std::cout << "cam no img" << std::endl;
         }
-        if(hole_img_point.x > 0){
-            cv::Point& p = hole_img_point;
-            float img_p_data[] = {p.x, p.y, 1};
-            cv::Mat img_p = cv::Mat(3,1,CV_32FC1, img_p_data);
-            cv::Mat world_p = K_pnp.inv()*img_p;
-            double factor_s = z/world_p.at<float>(2,0);
-            xy.push_back(world_p.at<float>(0,0)*factor_s);
-            xy.push_back(world_p.at<float>(1,0)*factor_s);
-        }
-        return xy; 
+    }
+    if(hole_img_point.x > 0){
+        cv::Point& p = hole_img_point;
+        float img_p_data[] = {p.x*2, p.y*2, 1};
+        cv::Mat img_p = cv::Mat(3,1,CV_32FC1, img_p_data);
+        cv::Mat world_p = K_pnp.inv()*img_p;
+        double factor_s = z/world_p.at<float>(2,0);
+        xy.push_back(world_p.at<float>(0,0)*factor_s);
+        xy.push_back(world_p.at<float>(1,0)*factor_s);
+    }
+    return xy; 
     }
 }
