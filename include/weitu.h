@@ -11,8 +11,8 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-#include "src/finder/finderpatternfinder.h"
-#include "src/edcircle/edcircle.h"
+#include "../src/finder/finderpatternfinder.h"
+#include "../src/edcircle/edcircle.h"
 
 class Timer
 {
