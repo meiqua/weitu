@@ -428,11 +428,9 @@ std::vector<double> find_hole(double z, double timeout, int cam_id)
             // cv::undistort(rgb, rgb, K_pnp, D_pnp);
             start_cols = rgb.cols / 4;
             start_rows = rgb.rows / 4;
-            cv::Rect roi(start_rows, start_cols, rgb.rows / 2, rgb.cols / 2);
-            // rgb = rgb(roi);
-            cv::Mat src = rgb(roi).clone();
+            cv::Rect roi(start_cols, start_rows, rgb.cols / 2, rgb.rows / 2);
             // cv::pyrDown(rgb, rgb);
-            hole_img_point = hole_detect::find(src);
+            hole_img_point = hole_detect::find(rgb(roi));
             if (hole_img_point.x == 0)
                 continue;
             break;
