@@ -1,5 +1,5 @@
 #include "weitu.h"
-
+#include "seg/seg.h"
 namespace weitu{
 #define INFINITE            0xFFFFFFFF  // Infinite timeout
 #define CREATE_SUSPENDED    0x00000004
@@ -298,8 +298,47 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v) {
 
 cv::Point find(cv::Mat src){
     
+    cv::Mat rgb = src.clone();
     if(src.channels()==3){
         cv::cvtColor(src, src, CV_BGR2GRAY);
+    }else{
+        cv::cvtColor(src, rgb, CV_GRAY2BGR);
+    }
+
+    cv::Mat lab;
+    cv::cvtColor(rgb, lab, CV_BGR2Lab);
+    //ori: L 0--100 a: -127--127 b: -127--127, now all 0-255
+
+    seg_helper::min_span_tree::Graph graph(lab);
+
+    Segmentation seg(graph.V_size, graph.super_indices, graph.mst_edges);
+    auto lvs = seg.process();
+
+    int i = 0;
+//    for(int i=0;i<lvs.size();i++)
+    {
+        auto& lv = lvs[i];
+
+        cv::Mat ave_rgb = cv::Mat(rgb.size(), CV_8UC3, cv::Scalar(0));
+        for(auto& part: lv){
+            cv::Vec3d aveColor(0,0,0);
+            int count = 0;
+            for(int idx: part){
+                int row = idx/int(rgb.cols);
+                int col = idx%int(rgb.cols);
+                aveColor += rgb.at<cv::Vec3b>(row, col);
+                count ++;
+            }
+            aveColor /= count;
+            for(int idx: part){
+                int row = idx/int(rgb.cols);
+                int col = idx%int(rgb.cols);
+                ave_rgb.at<cv::Vec3b>(row, col) = aveColor;
+            }
+        }
+        cv::cvtColor(ave_rgb, src, CV_BGR2GRAY);
+        medianBlur(src, src, 5);
+        medianBlur(src, src, 5);
     }
 
     std::vector<float> radiuses;
@@ -359,16 +398,20 @@ float D_data[] = {
     Timer timer;
     weitu::Camera camera;
     camera.open(cam_id);
-        
+    
+    int start_cols = 0;
+    int start_rows = 0;
     while (timer.elapsed()<timeout) {
         cv::Mat rgb = camera.get();
         if(!rgb.empty()){
             // cv::undistort(rgb, rgb, K_pnp, D_pnp);
-            // cv::Mat src = rgb.clone();
-            // cv::Rect roi(rgb.rows/4, rgb.cols/4, rgb.rows/2, rgb.cols/2);
+            start_cols = rgb.cols/4;
+            start_rows = rgb.rows/4;
+            cv::Rect roi(start_rows, start_cols, rgb.rows/2, rgb.cols/2);
             // rgb = rgb(roi);
-            cv::pyrDown(rgb, rgb);
-            hole_img_point = hole_detect::find(rgb);
+            cv::Mat src = rgb(roi).clone();
+            // cv::pyrDown(rgb, rgb);
+            hole_img_point = hole_detect::find(src);
             if(hole_img_point.x == 0) continue;
             break;
         }else{
@@ -377,7 +420,7 @@ float D_data[] = {
     }
     if(hole_img_point.x > 0){
         cv::Point& p = hole_img_point;
-        float img_p_data[] = {p.x*2, p.y*2, 1};
+        float img_p_data[] = {(p.x+start_cols), (p.y+start_rows), 1};
         cv::Mat img_p = cv::Mat(3,1,CV_32FC1, img_p_data);
         cv::Mat world_p = K_pnp.inv()*img_p;
         double factor_s = z/world_p.at<float>(2,0);

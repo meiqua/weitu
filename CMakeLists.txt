@@ -47,6 +47,26 @@ set(EDCIRCLE_SRC
     src/edcircle/edcircle.cpp)
 
 
+# eigen3
+find_package( Eigen3 REQUIRED )
+include_directories(${INCLUDE_DIRECTORIES}
+    ${EIGEN3_INCLUDE_DIR})
+# asp
+include_directories(${INCLUDE_DIRECTORIES}
+    "src/seg/asp/include"
+    "src/seg/asp"
+    "src/seg")
+set(ASP_SRC
+    src/seg/asp/src/libasp/algos/ASP.cpp
+    src/seg/asp/src/libasp/algos/DASP.cpp
+    src/seg/asp/src/libasp/algos/SLIC.cpp
+    src/seg/asp/src/libasp/pds/pds.cpp
+    src/seg/asp/src/libasp/pds/Grid.cpp
+    src/seg/asp/src/libasp/pds/FloydSteinberg.cpp
+    src/seg/CIEDE2000/CIEDE2000.cpp
+    src/seg/seg.cpp)
+
+
 include_directories(${INCLUDE_DIRECTORIES}
         ${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -54,7 +74,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         include)
 
 
-add_library(${PROJECT_NAME} ${FINDER_SRC} ${EDCIRCLE_SRC} src/weitu.cpp)
+add_library(${PROJECT_NAME} ${FINDER_SRC} ${EDCIRCLE_SRC} ${ASP_SRC} src/weitu.cpp)
 target_link_libraries(${PROJECT_NAME} ${WEITU_LIBS} ${OpenCV_LIBS})
 
 
