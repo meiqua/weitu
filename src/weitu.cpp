@@ -307,7 +307,7 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v)
     return idx;
 }
 
-cv::Point find(cv::Mat src)
+cv::Point find(cv::Mat src, bool denoise)
 {
 
     cv::Mat rgb = src.clone();
@@ -320,43 +320,46 @@ cv::Point find(cv::Mat src)
         cv::cvtColor(src, rgb, CV_GRAY2BGR);
     }
 
-    cv::Mat lab;
-    cv::cvtColor(rgb, lab, CV_BGR2Lab);
-    //ori: L 0--100 a: -127--127 b: -127--127, now all 0-255
-
-    seg_helper::min_span_tree::Graph graph(lab);
-
-    Segmentation seg(graph.V_size, graph.super_indices, graph.mst_edges);
-    auto lvs = seg.process();
-
-    int i = 0;
-    //    for(int i=0;i<lvs.size();i++)
+    if (denoise)
     {
-        auto &lv = lvs[i];
+        cv::Mat lab;
+        cv::cvtColor(rgb, lab, CV_BGR2Lab);
+        //ori: L 0--100 a: -127--127 b: -127--127, now all 0-255
 
-        cv::Mat ave_rgb = cv::Mat(rgb.size(), CV_8UC3, cv::Scalar(0));
-        for (auto &part : lv)
+        seg_helper::min_span_tree::Graph graph(lab);
+
+        Segmentation seg(graph.V_size, graph.super_indices, graph.mst_edges);
+        auto lvs = seg.process();
+
+        int i = 0;
+        //    for(int i=0;i<lvs.size();i++)
         {
-            cv::Vec3d aveColor(0, 0, 0);
-            int count = 0;
-            for (int idx : part)
+            auto &lv = lvs[i];
+
+            cv::Mat ave_rgb = cv::Mat(rgb.size(), CV_8UC3, cv::Scalar(0));
+            for (auto &part : lv)
             {
-                int row = idx / int(rgb.cols);
-                int col = idx % int(rgb.cols);
-                aveColor += rgb.at<cv::Vec3b>(row, col);
-                count++;
+                cv::Vec3d aveColor(0, 0, 0);
+                int count = 0;
+                for (int idx : part)
+                {
+                    int row = idx / int(rgb.cols);
+                    int col = idx % int(rgb.cols);
+                    aveColor += rgb.at<cv::Vec3b>(row, col);
+                    count++;
+                }
+                aveColor /= count;
+                for (int idx : part)
+                {
+                    int row = idx / int(rgb.cols);
+                    int col = idx % int(rgb.cols);
+                    ave_rgb.at<cv::Vec3b>(row, col) = aveColor;
+                }
             }
-            aveColor /= count;
-            for (int idx : part)
-            {
-                int row = idx / int(rgb.cols);
-                int col = idx % int(rgb.cols);
-                ave_rgb.at<cv::Vec3b>(row, col) = aveColor;
-            }
+            cv::cvtColor(ave_rgb, src, CV_BGR2GRAY);
+            medianBlur(src, src, 5);
+            medianBlur(src, src, 5);
         }
-        cv::cvtColor(ave_rgb, src, CV_BGR2GRAY);
-        medianBlur(src, src, 5);
-        medianBlur(src, src, 5);
     }
 
     std::vector<float> radiuses;

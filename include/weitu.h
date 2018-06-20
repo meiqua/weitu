@@ -61,7 +61,7 @@ std::vector<FinderPattern> find(cv::Mat src);
 
 namespace hole_detect {
 
-cv::Point find(cv::Mat src);
+cv::Point find(cv::Mat src, bool denoise = false);
 std::vector<double> find_hole(double z, double timeout = 3, int cam_id = 0);
 }
 
