@@ -38,7 +38,7 @@ void hole_test(){
     using namespace std;
     using namespace cv;
 
-    auto rgb = cv::imread("/home/s/catkin_ws/src/weitu/test/test2.png");
+    auto rgb = cv::imread("/home/meiqua/weitu/test/test.png");
 
     Timer timer;
 
@@ -49,18 +49,18 @@ void hole_test(){
 
     timer.out("detect time");
 
-    if(rgb.channels()==1){
-        cv::cvtColor(rgb, rgb, CV_GRAY2BGR);
-    }
-    if(p.x>0){
-        cv::line(rgb, cv::Point(p.x, p.y-40), cv::Point(p.x, p.y+40)
-                 , cv::Scalar(0, 0, 255), 2);
-        cv::line(rgb, cv::Point(p.x-40, p.y), cv::Point(p.x+40, p.y)
-                 , cv::Scalar(0, 0, 255), 2);
-    }else {
-        std::cout << "nothing found" << std::endl;
-    }
-    imshow("rgb", rgb);
+    // if(rgb.channels()==1){
+    //     cv::cvtColor(rgb, rgb, CV_GRAY2BGR);
+    // }
+    // if(p.x>0){
+    //     cv::line(rgb, cv::Point(p.x, p.y-40), cv::Point(p.x, p.y+40)
+    //              , cv::Scalar(0, 0, 255), 2);
+    //     cv::line(rgb, cv::Point(p.x-40, p.y), cv::Point(p.x+40, p.y)
+    //              , cv::Scalar(0, 0, 255), 2);
+    // }else {
+    //     std::cout << "nothing found" << std::endl;
+    // }
+    // imshow("rgb", rgb);
     waitKey(0);
 }
 
@@ -99,11 +99,11 @@ void camera_hole_test(){
 int main()
 {	
     // camera_marker_test();
-    camera_hole_test();
+    // camera_hole_test();
 
     // double cam_z = 1.211448 - 1.03;
     // auto detect_xy = hole_detect::find_hole(cam_z);
-//    hole_test();
+   hole_test();
 
     return 0;
 }

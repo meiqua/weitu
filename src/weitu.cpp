@@ -386,6 +386,7 @@ cv::Point find(cv::Mat src, bool denoise)
     }
 
     bool vis_result = true;
+    bool vis_center = true;
     if (vis_result)
     {
         cv::Mat to_show;
@@ -396,9 +397,16 @@ cv::Point find(cv::Mat src, bool denoise)
         }
         cv::line(to_show, cv::Point(best_p.x, best_p.y - best_r / 2), cv::Point(best_p.x, best_p.y + best_r / 2), cv::Scalar(0, 255, 0), 2);
         cv::line(to_show, cv::Point(best_p.x - best_r / 2, best_p.y), cv::Point(best_p.x + best_r / 2, best_p.y), cv::Scalar(0, 255, 0), 2);
+
+        if (vis_center)
+        {
+            cv::circle(to_show, {to_show.cols/2, to_show.rows/2}, 1, {255, 255, 0}, 2);
+            cv::circle(to_show, {to_show.cols/2, to_show.rows/2}, best_r/2, {255, 255, 0}, 2);
+            cv::line(to_show, {to_show.cols/2, to_show.rows/2}, cv::Point(best_p.x, best_p.y), cv::Scalar(0, 255, 255), 1);
+        }
         // cv::pyrDown(to_show, to_show);
         cv::imshow("hole detect", to_show);
-        cv::waitKey(3000);
+        cv::waitKey(1);
     }
     return best_p;
 }
