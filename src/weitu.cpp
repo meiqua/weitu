@@ -309,6 +309,8 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v)
 
 cv::Point find(cv::Mat src, bool denoise)
 {
+    bool vis_result = true;
+    bool vis_center = true;
 
     cv::Mat rgb = src.clone();
     if (src.channels() == 3)
@@ -365,8 +367,14 @@ cv::Point find(cv::Mat src, bool denoise)
     std::vector<float> radiuses;
     auto centers = edcircle::find_circle(src, radiuses);
 
-    if (centers.empty())
+    if (centers.empty()){
+        if(vis_result){
+            cv::imshow("hole detect", src);
+            cv::waitKey(1);
+        }
         return cv::Point(0, 0);
+    }
+        
 
     cv::Point c = {src.cols / 2, src.rows / 2};
     cv::Point best_p;
@@ -385,8 +393,6 @@ cv::Point find(cv::Mat src, bool denoise)
         }
     }
 
-    bool vis_result = true;
-    bool vis_center = true;
     if (vis_result)
     {
         cv::Mat to_show;
