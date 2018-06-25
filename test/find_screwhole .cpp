@@ -156,8 +156,8 @@ void save_data()
     for (int i = 0; i < hole_loc_record.size(); i++)
     {
         fs << "{";
-        save_point_quat(hole_loc_record[i], "loc", hole_quat_record, "quat", fs);
-        save_point_quat(hole_loc_record2[i], "loc2", hole_quat_record2, "quat2", fs);
+        save_point_quat(hole_loc_record[i], "loc", hole_quat_record[i], "quat", fs);
+        save_point_quat(hole_loc_record2[i], "loc2", hole_quat_record2[i], "quat2", fs);
         fs << "}";
     }
     fs << "]";
@@ -192,8 +192,8 @@ void load_data()
         cv::FileNodeIterator it = hole_record.begin(), it_end = hole_record.end();
         for (int i = 0; it != it_end; ++it, i++)
         {
-            load_point_quat(hole_loc_record[i], "loc", hole_quat_record, "quat", it);
-            load_point_quat(hole_loc_record2[i], "loc2", hole_quat_record2, "quat2", it);
+            load_point_quat(hole_loc_record[i], "loc", hole_quat_record[i], "quat", it);
+            load_point_quat(hole_loc_record2[i], "loc2", hole_quat_record2[i], "quat2", it);
         }
     }
 
@@ -510,15 +510,15 @@ int main(int argc, char *argv[])
         robot2_io_states_srv.request.state = 1.0;
         robot2_io_states_client.call(robot2_io_states_srv);
 
-        for (int current_hole_local = 0; current_hole_local < total_holes; current_hole_local++)
+        for (int current_hole = 0; current_hole < total_holes; current_hole++)
         {
-            ROS_INFO("calibrating hole " + std::to_string(current_hole_local) + ", cam_robot go");
+            ROS_INFO("calibrating hole " + std::to_string(current_hole) + ", cam_robot go");
             geometry_msgs::Pose robot1_current_pose;
             bool ret1 = true;
 
-            if (hole_loc_record[current_hole_local].x != 0 && hole_quat_record[current_hole_local].w != 0)
+            if (hole_loc_record[current_hole].x != 0 && hole_quat_record[current_hole].w != 0)
             {
-                ret1 = robot1_go(hole_loc_record[current_hole_local], hole_quat_record[current_hole_local], robot1_move_group);
+                ret1 = robot1_go(hole_loc_record[current_hole], hole_quat_record[current_hole], robot1_move_group);
                 if (!ret1)
                 {
                     std::cout << "wrong cartesian" << std::endl;
@@ -543,7 +543,7 @@ int main(int argc, char *argv[])
                         auto p = hole_detect::find(rgb);
                     }
                     char key = cv::waitKey(1);
-                    if (key = ' ')
+                    if (key == ' ')
                     {
                         break;
                     }
@@ -551,13 +551,13 @@ int main(int argc, char *argv[])
             }
 
             robot1_current_pose = robot1_move_group.getCurrentPose().pose;
-            hole_loc_record[current_hole_local] = robot1_current_pose.position;
-            hole_quat_record[current_hole_local] = robot1_current_pose.orientation;
+            hole_loc_record[current_hole] = robot1_current_pose.position;
+            hole_quat_record[current_hole] = robot1_current_pose.orientation;
 
             auto detect_xy = hole_detect::find_hole(cam_z);
             if (detect_xy.size() > 0)
             {
-                hole_detect_record_base[current_hole_local] = detect_xy;
+                hole_detect_record_base[current_hole] = detect_xy;
             }
             else
             {
@@ -637,7 +637,7 @@ int main(int argc, char *argv[])
             while (1)
             {
                 char key = cv::waitKey(1);
-                if (key = ' ')
+                if (key == ' ')
                 {
                     break;
                 }
@@ -671,7 +671,7 @@ int main(int argc, char *argv[])
             while (1)
             {
                 char key = cv::waitKey(1);
-                if (key = ' ')
+                if (key == ' ')
                 {
                     break;
                 }
@@ -704,7 +704,7 @@ int main(int argc, char *argv[])
             while (1)
             {
                 char key = cv::waitKey(1);
-                if (key = ' ')
+                if (key == ' ')
                 {
                     break;
                 }
