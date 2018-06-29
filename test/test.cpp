@@ -38,14 +38,14 @@ void hole_test(){
     using namespace std;
     using namespace cv;
 
-    auto rgb = cv::imread("/home/meiqua/weitu/test/test.png");
+    auto rgb = cv::imread("/home/meiqua/weitu/test/test2.bmp");
 
     Timer timer;
 
 //    cv::Rect roi(rgb.rows/4, rgb.cols/4, rgb.rows/2, rgb.cols/2);
 //    rgb = rgb(roi);
 
-    auto p = hole_detect::find(rgb);
+    auto p = hole_detect::find(rgb, true);
 
     timer.out("detect time");
 

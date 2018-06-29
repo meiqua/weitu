@@ -6,7 +6,8 @@ namespace edcircle {
 #define pi 3.141592653
 #define mag_threshold 50
 #define arc_squares 2
-int shortestline = 50;
+static int shortestline = 50;
+static bool show_steps = false;
 
 using namespace cv;
 using namespace std;
@@ -1179,15 +1180,18 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 
 
     shortestline = log(gray.rows);
-//	Mat gray;
-//	cvtColor(image, gray, CV_BGR2GRAY);
-//    imshow("image", gray);
-//    waitKey(0);
+    //高斯平滑
+//    GaussianBlur(gray, gray, Size(5, 5), 1);
+
+    if(show_steps){
+        cv::Mat to_show;
+        cv::resize(gray, to_show, {gray.cols*1024/gray.rows, 1024});
+        imshow("edcircle_image", to_show);
+        waitKey(0);
+    }
+
 
 	/******************用EDPF提取边缘*********************/
-
-	//高斯平滑
-	// GaussianBlur(gray, gray, Size(5, 5), 1);
 
 	//计算梯度
 	Mat sobelx, sobely;
@@ -1308,8 +1312,12 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
         seg_now->pix_chain = pix_chain;
 	}
 
-//     imshow("gray_edge", edge);           //显示边缘
-//     waitKey(0);
+    if(show_steps){
+        cv::Mat to_show;
+        cv::resize(edge, to_show, {edge.cols*1024/edge.rows, 1024});
+        imshow("edcircle_gray_edge", to_show);
+        waitKey(0);
+    }
 
 	/***************************拆分成直线**************************************/
 
@@ -1341,9 +1349,12 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 			; pix_iter != pix_end; pix_iter++)
 			BGR_edge.at<Vec3b>((*pix_iter)->x, (*pix_iter)->y)[2] = 255;
 	}
-//     imshow("arc_candi", BGR_edge);                          //显示可能的圆弧
-//     waitKey(0);
-
+    if(show_steps){
+        cv::Mat to_show;
+        cv::resize(BGR_edge, to_show, {BGR_edge.cols*1024/BGR_edge.rows, 1024});
+        imshow("edcircle_arc_candi", to_show);
+        waitKey(0);
+    }
 	/****************************判断是否是圆弧****************************************************/
 
 	vector<link_arc> arc_candi_list = arc_list;
@@ -1363,9 +1374,13 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
         for (vector<link_pix*>::iterator pix_iter = (*arc_iter->pix_chain).begin(); pix_iter != pix_end; pix_iter++)
 			BGR_edge.at<Vec3b>((*pix_iter)->x, (*pix_iter)->y)[2] = 255;
 	}
-//     imshow("arc", BGR_edge);                                  //显示确定的圆弧
-//     waitKey(0);
 
+    if(show_steps){
+        cv::Mat to_show;
+        cv::resize(BGR_edge, to_show, {BGR_edge.cols*1024/BGR_edge.rows, 1024});
+        imshow("edcircle_arc", to_show);
+        waitKey(0);
+    }
 	/*******************************组成圆或椭圆************************************************/
 
 	paixu(arc_list);
@@ -1458,8 +1473,6 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
 		centers.push_back(circle_list_iter->o);
 		radiuses.push_back(circle_list_iter->r);
 	}
-//     imshow("gray_circle", gray);
-//     waitKey(0);
 
     for(auto& ptr: pix2free){
         free(ptr);

@@ -411,6 +411,7 @@ cv::Point find(cv::Mat src, bool denoise)
             cv::line(to_show, {to_show.cols/2, to_show.rows/2}, cv::Point(best_p.x, best_p.y), cv::Scalar(0, 255, 255), 1);
         }
         // cv::pyrDown(to_show, to_show);
+        cv::resize(to_show, to_show, {to_show.cols*1024/to_show.rows, 1024});
         cv::imshow("hole detect", to_show);
         cv::waitKey(1);
     }
@@ -460,7 +461,7 @@ std::vector<double> find_hole(double z, double timeout, int cam_id)
     if (hole_img_point.x > 0)
     {
         cv::Point &p = hole_img_point;
-        float img_p_data[] = {(p.x + start_cols), (p.y + start_rows), 1};
+        float img_p_data[] = {float(p.x + start_cols), float(p.y + start_rows), 1.0f};
         cv::Mat img_p = cv::Mat(3, 1, CV_32FC1, img_p_data);
         cv::Mat world_p = K_pnp.inv() * img_p;
         double factor_s = z / world_p.at<float>(2, 0);
