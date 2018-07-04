@@ -361,7 +361,7 @@ cv::Point find(cv::Mat src, bool denoise)
 
     if (denoise)
     {
-        GaussianBlur(rgb, rgb, cv::Size(5, 5), 1);
+        // GaussianBlur(rgb, rgb, cv::Size(5, 5), 1);
         cv::Mat lab;
         cv::cvtColor(rgb, lab, CV_BGR2Lab);
         //ori: L 0--100 a: -127--127 b: -127--127, now all 0-255
@@ -399,7 +399,7 @@ cv::Point find(cv::Mat src, bool denoise)
             }
             cv::cvtColor(ave_rgb, src, CV_BGR2GRAY);
             // medianBlur(src, src, 5);
-            // GaussianBlur(src, src, cv::Size(5, 5), 1);
+            GaussianBlur(src, src, cv::Size(5, 5), 1);
         }
     }
 

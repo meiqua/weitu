@@ -149,7 +149,7 @@ struct Graph {
 
         asp::SlicParameters slic_param;
         slic_param.num_superpixels = 1024;
-        slic_param.compactness = 0.5f;
+        slic_param.compactness = 0.15f;
         auto seg = asp::SuperpixelsSlic(img_color, slic_param);
         bool vis_idxs = false;
         if(vis_idxs){
