@@ -233,14 +233,8 @@ bool robot1_go(geometry_msgs::Point p, geometry_msgs::Quaternion q, moveit::plan
     double fraction = 0;
     std::vector<geometry_msgs::Pose> waypoints;
 
-    geometry_msgs::Pose robot1_current_pose;
-    robot1_current_pose = robot1_move_group.getCurrentPose().pose;
-    waypoints.push_back(robot1_current_pose);
     geometry_msgs::Pose robot1_pose1;
-
-    // robot1_pose1.position = robot1_current_pose.position;
     robot1_pose1.orientation = q;
-    // waypoints.push_back(robot1_pose1);
     robot1_pose1.position = p;
     waypoints.push_back(robot1_pose1);
     moveit_msgs::RobotTrajectory trajectory1;
@@ -268,9 +262,6 @@ bool robot2_go(geometry_msgs::Point p, geometry_msgs::Quaternion q, moveit::plan
 
     robot2_move_group.setMaxVelocityScalingFactor(0.1);
     waypoints.clear();
-    geometry_msgs::Pose robot2_current_pose;
-    robot2_current_pose = robot2_move_group.getCurrentPose().pose;
-    waypoints.push_back(robot2_current_pose);
     geometry_msgs::Pose screw_hole_pose1;
     screw_hole_pose1.position = p;
     screw_hole_pose1.orientation = q;
@@ -306,7 +297,7 @@ bool robot2_go2(geometry_msgs::Point p, geometry_msgs::Quaternion q, moveit::pla
     waypoints.clear();
     geometry_msgs::Pose robot2_current_pose;
     robot2_current_pose = robot2_move_group.getCurrentPose().pose;
-    waypoints.push_back(robot2_current_pose);
+
     geometry_msgs::Pose mid_pose;
     mid_pose = robot2_current_pose;
     mid_pose.position.z += 0.1;
