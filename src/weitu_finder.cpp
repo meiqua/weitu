@@ -5,8 +5,8 @@
 #include <tf/transform_broadcaster.h>
 
 double qr_dist = 0.031;
-std::string camera_link = "camera_link";
-// std::string camera_link = "robot1_camera_eef_link";
+// std::string camera_link = "camera_link";
+std::string camera_link = "robot1_camera_eef_link";
 
 std::string camera_marker = "camera_marker";
 // std::string path_to_cam_info = "/tmp/calibrationdata/ost.yaml";
@@ -169,7 +169,7 @@ int main(int argc, char **argv)
                 // timer.out("2 time");
                 cv::solvePnP(p4w_mat, p4_mat, K_pnp, D_pnp, rvec, tvec, false, cv::SOLVEPNP_P3P);
                 // ROS_INFO("here we are!");
-                
+                std::cout << "z: " << tvec.at<double>(2,0) << std::endl;
                 cv::Rodrigues(rvec, rotM);
                 // rotM.convertTo(rotM, CV_64F);
                 // tvec.convertTo(rvec, CV_64F);

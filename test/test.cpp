@@ -73,24 +73,24 @@ void camera_hole_test(){
        cv::Mat rgb = camera.get();
        if(!rgb.empty()){
 
-        //    cv::pyrDown(rgb, rgb);
+           cv::pyrDown(rgb, rgb);
 
            timer.reset();
            auto p = hole_detect::find(rgb);
            timer.out("detect time");
 
-        //    if(rgb.channels()==1){
-        //        cv::cvtColor(rgb, rgb, CV_GRAY2BGR);
-        //    }
-        //    if(p.x>0){
-        //        cv::line(rgb, cv::Point(p.x, p.y-40), cv::Point(p.x, p.y+40)
-        //                 , cv::Scalar(0, 0, 255), 2);
-        //        cv::line(rgb, cv::Point(p.x-40, p.y), cv::Point(p.x+40, p.y)
-        //                 , cv::Scalar(0, 0, 255), 2);
-        //    }
+           if(rgb.channels()==1){
+               cv::cvtColor(rgb, rgb, CV_GRAY2BGR);
+           }
+           if(p.x>0){
+               cv::line(rgb, cv::Point(p.x, p.y-40), cv::Point(p.x, p.y+40)
+                        , cv::Scalar(0, 0, 255), 2);
+               cv::line(rgb, cv::Point(p.x-40, p.y), cv::Point(p.x+40, p.y)
+                        , cv::Scalar(0, 0, 255), 2);
+           }
 
-        //    imshow("rgb", rgb);
-        //    cv::waitKey(100);
+           imshow("rgb", rgb);
+           cv::waitKey(100);
        }
     }
 }

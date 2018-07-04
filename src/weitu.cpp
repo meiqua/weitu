@@ -335,7 +335,9 @@ cv::Point find(cv::Mat src){
                         , cv::Scalar(0, 255, 0), 2);
         // cv::pyrDown(to_show, to_show);
         cv::imshow("hole detect", to_show);
-        cv::waitKey(3000);
+        cv::waitKey(2000);
+        cv::destroyWindow("hole detect");
+
     }
     return best_p;
 }
