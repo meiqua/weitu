@@ -37,6 +37,7 @@ namespace weitu {
 
 class Camera{
 public:
+    bool forbid_cout = true;
     bool open(uint32_t i=0);
     cv::Mat get();
     void close();

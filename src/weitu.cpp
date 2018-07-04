@@ -138,6 +138,9 @@ static int32_t GENICAM_disconnect(GENICAM_Camera *pGetCamera)
 
 bool Camera::open(uint32_t i)
 {
+    if (forbid_cout)
+        std::cout.setstate(std::ios_base::failbit);
+
     int32_t ret;
     GENICAM_System *pSystem = NULL;
     GENICAM_Camera *pCameraList = NULL;
@@ -147,6 +150,8 @@ bool Camera::open(uint32_t i)
     if (-1 == ret)
     {
         printf("pSystem is null.\r\n");
+        if (forbid_cout)
+            std::cout.clear();
         return false;
     }
 
@@ -154,12 +159,16 @@ bool Camera::open(uint32_t i)
     if (-1 == ret)
     {
         printf("discovery device fail.\r\n");
+        if (forbid_cout)
+            std::cout.clear();
         return false;
     }
 
     if (cameraCnt < i + 1)
     {
         printf("no enough Camera is discovered.\r\n");
+        if (forbid_cout)
+            std::cout.clear();
         return false;
     }
 
@@ -170,6 +179,8 @@ bool Camera::open(uint32_t i)
     if (ret != 0)
     {
         printf("connect cameral failed.\n");
+        if (forbid_cout)
+            std::cout.clear();
         return false;
     }
 
@@ -179,6 +190,8 @@ bool Camera::open(uint32_t i)
     if (ret != 0)
     {
         printf("create stream obj  fail.\r\n");
+        if (forbid_cout)
+            std::cout.clear();
         return false;
     }
 
@@ -186,16 +199,25 @@ bool Camera::open(uint32_t i)
     if (ret != 0)
     {
         printf("StartGrabbing  fail.\n");
+        if (forbid_cout)
+            std::cout.clear();
         return false;
     }
     open_flag = true;
+    if (forbid_cout)
+        std::cout.clear();
     return true;
 }
 
 cv::Mat Camera::get()
 {
+    if (forbid_cout)
+        std::cout.setstate(std::ios_base::failbit);
+
     if (!open_flag)
     {
+        if (forbid_cout)
+            std::cout.clear();
         return cv::Mat();
     }
 
@@ -204,6 +226,8 @@ cv::Mat Camera::get()
 
     if (NULL == pStreamSource)
     {
+        if (forbid_cout)
+            std::cout.clear();
         return cv::Mat();
     }
 
@@ -211,6 +235,8 @@ cv::Mat Camera::get()
     if (ret < 0)
     {
         printf("getFrame  fail.\n");
+        if (forbid_cout)
+            std::cout.clear();
         return cv::Mat();
     }
 
@@ -219,6 +245,8 @@ cv::Mat Camera::get()
     {
         printf("frame is invalid!\n");
         pFrame->release(pFrame);
+        if (forbid_cout)
+            std::cout.clear();
         return cv::Mat();
     }
     //    printf("get frame id = [%ld] successfully!\n", pFrame->getBlockId(pFrame));
@@ -230,11 +258,17 @@ cv::Mat Camera::get()
     std::memcpy(dest, img, sizeof dest);
     cv::Mat result = cv::Mat(rows, cols, CV_8UC1, dest);
     pFrame->release(pFrame);
+
+    if (forbid_cout)
+        std::cout.clear();
     return result;
 }
 
 void Camera::close()
 {
+    if (forbid_cout)
+        std::cout.setstate(std::ios_base::failbit);
+
     if (open_flag)
     {
         // stop grabbing from camera
@@ -247,6 +281,9 @@ void Camera::close()
         pStreamSource->release(pStreamSource);
         open_flag = false;
     }
+
+    if (forbid_cout)
+        std::cout.clear();
 }
 
 } // namespace weitu
@@ -324,6 +361,7 @@ cv::Point find(cv::Mat src, bool denoise)
 
     if (denoise)
     {
+        GaussianBlur(rgb, rgb, cv::Size(5, 5), 1);
         cv::Mat lab;
         cv::cvtColor(rgb, lab, CV_BGR2Lab);
         //ori: L 0--100 a: -127--127 b: -127--127, now all 0-255
@@ -335,7 +373,8 @@ cv::Point find(cv::Mat src, bool denoise)
 
         int i = 0;
         //    for(int i=0;i<lvs.size();i++)
-        if(!lvs.empty()){
+        if (!lvs.empty())
+        {
             auto &lv = lvs[i];
 
             cv::Mat ave_rgb = cv::Mat(rgb.size(), CV_8UC3, cv::Scalar(0));
@@ -359,28 +398,25 @@ cv::Point find(cv::Mat src, bool denoise)
                 }
             }
             cv::cvtColor(ave_rgb, src, CV_BGR2GRAY);
-            medianBlur(src, src, 5);
-            medianBlur(src, src, 5);
-            // cv::threshold(src, src, 0, 255, CV_THRESH_OTSU);
-            GaussianBlur(src, src, cv::Size(5, 5), 1);
-
-            
+            // medianBlur(src, src, 5);
+            // GaussianBlur(src, src, cv::Size(5, 5), 1);
         }
     }
 
     std::vector<float> radiuses;
     auto centers = edcircle::find_circle(src, radiuses);
 
-    if (centers.empty()){
-        if(vis_result){
+    if (centers.empty())
+    {
+        if (vis_result)
+        {
             cv::Mat to_show = src;
-            cv::resize(to_show, to_show, {to_show.cols*1024/to_show.rows, 1024});
+            cv::resize(to_show, to_show, {to_show.cols * 1024 / to_show.rows, 1024});
             cv::imshow("hole detect", to_show);
             cv::waitKey(1);
         }
         return cv::Point(0, 0);
     }
-        
 
     cv::Point c = {src.cols / 2, src.rows / 2};
     cv::Point best_p;
@@ -412,12 +448,12 @@ cv::Point find(cv::Mat src, bool denoise)
 
         if (vis_center)
         {
-            cv::circle(to_show, {to_show.cols/2, to_show.rows/2}, 1, {255, 255, 0}, 2);
-            cv::circle(to_show, {to_show.cols/2, to_show.rows/2}, best_r/2, {255, 255, 0}, 2);
-            cv::line(to_show, {to_show.cols/2, to_show.rows/2}, cv::Point(best_p.x, best_p.y), cv::Scalar(0, 255, 255), 1);
+            cv::circle(to_show, {to_show.cols / 2, to_show.rows / 2}, 1, {255, 255, 0}, 2);
+            cv::circle(to_show, {to_show.cols / 2, to_show.rows / 2}, best_r / 2, {255, 255, 0}, 2);
+            cv::line(to_show, {to_show.cols / 2, to_show.rows / 2}, cv::Point(best_p.x, best_p.y), cv::Scalar(0, 255, 255), 1);
         }
         // cv::pyrDown(to_show, to_show);
-        cv::resize(to_show, to_show, {to_show.cols*1024/to_show.rows, 1024});
+        cv::resize(to_show, to_show, {to_show.cols * 1024 / to_show.rows, 1024});
         cv::imshow("hole detect", to_show);
         cv::waitKey(1);
     }
