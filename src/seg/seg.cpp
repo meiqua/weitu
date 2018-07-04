@@ -88,7 +88,11 @@ std::vector<std::vector<std::vector<int>>> Segmentation::process()
         merge(edge);
     }
 
-    assert(level_recorder.size()>1);
+    std::vector<std::vector<std::vector<int>>> lvs;
+
+    if(level_recorder.size()<=1){
+        return lvs;
+    }
 
     // post process
     bool post_process = false;
@@ -123,7 +127,6 @@ std::vector<std::vector<std::vector<int>>> Segmentation::process()
         }
     }
 
-    std::vector<std::vector<std::vector<int>>> lvs;
     for(int i=1;i<level_recorder.size();i++){  // jump level 0
 
         auto& result = level_recorder[i];

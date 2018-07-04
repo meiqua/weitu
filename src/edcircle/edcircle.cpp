@@ -4,7 +4,7 @@ namespace edcircle {
 
 #define line_squares 1
 #define pi 3.141592653
-#define mag_threshold 50
+#define mag_threshold 30
 #define arc_squares 2
 static int shortestline = 50;
 static bool show_steps = false;

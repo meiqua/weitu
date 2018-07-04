@@ -335,7 +335,7 @@ cv::Point find(cv::Mat src, bool denoise)
 
         int i = 0;
         //    for(int i=0;i<lvs.size();i++)
-        {
+        if(!lvs.empty()){
             auto &lv = lvs[i];
 
             cv::Mat ave_rgb = cv::Mat(rgb.size(), CV_8UC3, cv::Scalar(0));
@@ -361,6 +361,10 @@ cv::Point find(cv::Mat src, bool denoise)
             cv::cvtColor(ave_rgb, src, CV_BGR2GRAY);
             medianBlur(src, src, 5);
             medianBlur(src, src, 5);
+            // cv::threshold(src, src, 0, 255, CV_THRESH_OTSU);
+            GaussianBlur(src, src, cv::Size(5, 5), 1);
+
+            
         }
     }
 
@@ -369,7 +373,9 @@ cv::Point find(cv::Mat src, bool denoise)
 
     if (centers.empty()){
         if(vis_result){
-            cv::imshow("hole detect", src);
+            cv::Mat to_show = src;
+            cv::resize(to_show, to_show, {to_show.cols*1024/to_show.rows, 1024});
+            cv::imshow("hole detect", to_show);
             cv::waitKey(1);
         }
         return cv::Point(0, 0);
@@ -448,7 +454,7 @@ std::vector<double> find_hole(double z, double timeout, int cam_id)
             start_rows = rgb.rows / 4;
             cv::Rect roi(start_cols, start_rows, rgb.cols / 2, rgb.rows / 2);
             // cv::pyrDown(rgb, rgb);
-            hole_img_point = hole_detect::find(rgb(roi));
+            hole_img_point = hole_detect::find(rgb(roi), true);
             if (hole_img_point.x == 0)
                 continue;
             break;

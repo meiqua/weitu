@@ -31,22 +31,24 @@ geometry_msgs::Quaternion robot1_wait_quat;
 geometry_msgs::Point robot2_wait_point;
 geometry_msgs::Quaternion robot2_wait_quat;
 
-int total_holes = 4;
-std::vector<geometry_msgs::Point> hole_loc_record(total_holes, {0, 0, 0});
-std::vector<geometry_msgs::Quaternion> hole_quat_record(total_holes, {0, 0, 0, 0});
+int total_holes = 2;
+std::vector<geometry_msgs::Point> hole_loc_record(total_holes);
+std::vector<geometry_msgs::Quaternion> hole_quat_record(total_holes);
 
-std::vector<geometry_msgs::Point> hole_loc_record2(total_holes, {0, 0, 0});
-std::vector<geometry_msgs::Quaternion> hole_quat_record2(total_holes, {0, 0, 0, 0});
+std::vector<geometry_msgs::Point> hole_loc_record2(total_holes);
+std::vector<geometry_msgs::Quaternion> hole_quat_record2(total_holes);
 
 bool use_cam = true;
 double cam_z = 1.211108 - 1.211108 + 0.227 + 0.007;
 std::vector<std::vector<double>> hole_detect_record_base(total_holes, {0, 0});
 std::vector<std::vector<double>> cam_xy(total_holes);
 
-bool data_from_file = false;
+bool data_from_file = true;
 bool init_data_cali = true;
 bool linear_cali = true;
 double linear_cali_mat[4] = {1, 0, 0, 1};
+
+bool init_success = false;
 void record_init()
 {
     // robot1_wait_point.x = 0.393060;
@@ -124,25 +126,25 @@ void load_point_quat(geometry_msgs::Point &robot1_wait_point, std::string str_ro
                      geometry_msgs::Quaternion &robot1_wait_quat,
                      std::string str_robot1_wait_quat, cv::FileStorage &fs)
 {
-    fs[str_robot1_wait_point + "_x"] >> robot1_wait_point.x;
-    fs[str_robot1_wait_point + "_y"] >> robot1_wait_point.y;
-    fs[str_robot1_wait_point + "_z"] >> robot1_wait_point.z;
-    fs[str_robot1_wait_quat + "_x"] >> robot1_wait_quat.x;
-    fs[str_robot1_wait_quat + "_y"] >> robot1_wait_quat.y;
-    fs[str_robot1_wait_quat + "_z"] >> robot1_wait_quat.z;
-    fs[str_robot1_wait_quat + "_w"] >> robot1_wait_quat.w;
+    robot1_wait_point.x = (double)(fs)[str_robot1_wait_point + "_x"];
+    robot1_wait_point.y = (double)(fs)[str_robot1_wait_point + "_y"];
+    robot1_wait_point.z = (double)(fs)[str_robot1_wait_point + "_z"];
+    robot1_wait_quat.x = (double)(fs)[str_robot1_wait_quat + "_x"];
+    robot1_wait_quat.y = (double)(fs)[str_robot1_wait_quat + "_y"];
+    robot1_wait_quat.z = (double)(fs)[str_robot1_wait_quat + "_z"];
+    robot1_wait_quat.w = (double)(fs)[str_robot1_wait_quat + "_w"];
 }
 void load_point_quat(geometry_msgs::Point &robot1_wait_point, std::string str_robot1_wait_point,
                      geometry_msgs::Quaternion &robot1_wait_quat,
-                     std::string str_robot1_wait_quat, cv::FileNodeIterator &it)
+                     std::string str_robot1_wait_quat, cv::FileNode& it)
 {
-    robot1_wait_point.x = (double)(*it)[str_robot1_wait_point + "_x"];
-    robot1_wait_point.y = (double)(*it)[str_robot1_wait_point + "_y"];
-    robot1_wait_point.z = (double)(*it)[str_robot1_wait_point + "_z"];
-    robot1_wait_quat.x = (double)(*it)[str_robot1_wait_quat + "_x"];
-    robot1_wait_quat.y = (double)(*it)[str_robot1_wait_quat + "_y"];
-    robot1_wait_quat.z = (double)(*it)[str_robot1_wait_quat + "_z"];
-    robot1_wait_quat.w = (double)(*it)[str_robot1_wait_quat + "_w"];
+    robot1_wait_point.x = (double)(it)[str_robot1_wait_point + "_x"];
+    robot1_wait_point.y = (double)(it)[str_robot1_wait_point + "_y"];
+    robot1_wait_point.z = (double)(it)[str_robot1_wait_point + "_z"];
+    robot1_wait_quat.x = (double)(it)[str_robot1_wait_quat + "_x"];
+    robot1_wait_quat.y = (double)(it)[str_robot1_wait_quat + "_y"];
+    robot1_wait_quat.z = (double)(it)[str_robot1_wait_quat + "_z"];
+    robot1_wait_quat.w = (double)(it)[str_robot1_wait_quat + "_w"];
 }
 
 void save_data()
@@ -192,8 +194,9 @@ void load_data()
         cv::FileNodeIterator it = hole_record.begin(), it_end = hole_record.end();
         for (int i = 0; it != it_end; ++it, i++)
         {
-            load_point_quat(hole_loc_record[i], "loc", hole_quat_record[i], "quat", it);
-            load_point_quat(hole_loc_record2[i], "loc2", hole_quat_record2[i], "quat2", it);
+            auto fn = *it;
+            load_point_quat(hole_loc_record[i], "loc", hole_quat_record[i], "quat", fn);
+            load_point_quat(hole_loc_record2[i], "loc2", hole_quat_record2[i], "quat2", fn);
         }
     }
 
@@ -202,7 +205,7 @@ void load_data()
         cv::FileNodeIterator it = hole_detect_record_base_.begin(), it_end = hole_detect_record_base_.end();
         for (int i = 0; it != it_end; ++it, i++)
         {
-            auto &inner_seq = *it;
+            auto inner_seq = *it;
             auto inner_it = inner_seq.begin();
             auto inner_it_end = inner_seq.end();
             for (int j = 0; inner_it != inner_it_end; inner_it++, j++)
@@ -223,11 +226,10 @@ void load_data()
 }
 
 const double jump_threshold = 5;
-const double eef_step = 0.005;
+const double eef_step = 0.001;
 
 bool robot1_go(geometry_msgs::Point p, geometry_msgs::Quaternion q, moveit::planning_interface::MoveGroupInterface &robot1_move_group)
 {
-    ;
     double fraction = 0;
     std::vector<geometry_msgs::Pose> waypoints;
 
@@ -250,12 +252,12 @@ bool robot1_go(geometry_msgs::Point p, geometry_msgs::Quaternion q, moveit::plan
     }
 
     ROS_WARN("Robot1 cartesian path. (%.2f%% achieved)", fraction * 100.0);
-    ros::Duration(1.0).sleep();
+    // ros::Duration(1.0).sleep();
     moveit::planning_interface::MoveGroupInterface::Plan robot1_plan1;
     robot1_plan1.trajectory_ = trajectory1;
     robot1_move_group.execute(robot1_plan1);
     // ROS_INFO("robot1 is ready");
-    ros::Duration(1.0).sleep();
+    // ros::Duration(1.0).sleep();
     return true;
 }
 
@@ -286,12 +288,12 @@ bool robot2_go(geometry_msgs::Point p, geometry_msgs::Quaternion q, moveit::plan
     }
 
     ROS_WARN("Robot2 cartesian path. (%.2f%% achieved)", fraction * 100.0);
-    ros::Duration(1.0).sleep();
+    // ros::Duration(1.0).sleep();
     moveit::planning_interface::MoveGroupInterface::Plan robot2_plan1;
     robot2_plan1.trajectory_ = trajectory3;
     robot2_move_group.execute(robot2_plan1);
     // ROS_INFO("robot2 is ready");
-    ros::Duration(1.0).sleep();
+    // ros::Duration(1.0).sleep();
     return true;
 }
 
@@ -322,12 +324,12 @@ bool robot2_go2(geometry_msgs::Point p, geometry_msgs::Quaternion q, moveit::pla
     }
 
     ROS_WARN("Robot2 cartesian path. (%.2f%% achieved)", fraction * 100.0);
-    ros::Duration(1.0).sleep();
+    // ros::Duration(1.0).sleep();
     moveit::planning_interface::MoveGroupInterface::Plan robot2_plan1;
     robot2_plan1.trajectory_ = trajectory3;
     robot2_move_group.execute(robot2_plan1);
     // ROS_INFO("robot2 is ready");
-    ros::Duration(1.0).sleep();
+    // ros::Duration(1.0).sleep();
     return true;
 }
 
@@ -403,6 +405,13 @@ void printCurrentState(geometry_msgs::Pose current_pose)
     ROS_INFO("current pose z : %lf", current_pose.position.z);
 }
 
+void printCurrentState(geometry_msgs::Point current_pose)
+{
+    ROS_INFO("current pose x : %lf", current_pose.x);
+    ROS_INFO("current pose y : %lf", current_pose.y);
+    ROS_INFO("current pose z : %lf", current_pose.z);
+}
+
 void screw_hole(ros::ServiceClient &robot2_io_states_client)
 {
     int setio_fun = 1;
@@ -456,10 +465,16 @@ int main(int argc, char *argv[])
     if (data_from_file)
     {
         load_data();
+        init_success = true;
+
+        ROS_INFO("############load data################");
+        printCurrentState(hole_loc_record[0]);
+        printCurrentState(hole_loc_record[1]);
     }
     else
     {
         record_init();
+        init_success = true;
     }
 
     ros::init(argc, argv, "dual_arm");
@@ -512,11 +527,11 @@ int main(int argc, char *argv[])
 
         for (int current_hole = 0; current_hole < total_holes; current_hole++)
         {
-            ROS_INFO("calibrating hole " + std::to_string(current_hole) + ", cam_robot go");
+            ROS_INFO(("calibrating hole " + std::to_string(current_hole) + ", cam_robot go").c_str());
             geometry_msgs::Pose robot1_current_pose;
             bool ret1 = true;
 
-            if (hole_loc_record[current_hole].x != 0 && hole_quat_record[current_hole].w != 0)
+            if (init_success)
             {
                 ret1 = robot1_go(hole_loc_record[current_hole], hole_quat_record[current_hole], robot1_move_group);
                 if (!ret1)
@@ -530,7 +545,7 @@ int main(int argc, char *argv[])
                 ROS_INFO("no init pos provided, move robot by hand");
             }
 
-            std::cout << "please align hole to center, press space to next step" << std::endl;
+            std::cout << "please align hole to center, press w a s d, q to break" << std::endl;
 
             {
                 weitu::Camera camera;
@@ -540,24 +555,105 @@ int main(int argc, char *argv[])
                     cv::Mat rgb = camera.get();
                     if (!rgb.empty())
                     {
+                        // int start_cols = rgb.cols / 4;
+                        // int start_rows = rgb.rows / 4;
+                        // cv::Rect roi(start_cols, start_rows, rgb.cols / 2, rgb.rows / 2);
+
+                        // cv::Mat src = rgb.clone();
+                        // src = src(roi);
+                        
                         auto p = hole_detect::find(rgb);
                     }
-                    char key = cv::waitKey(1);
-                    if (key == ' ')
-                    {
+                    char key = cv::waitKey(0);
+
+                    robot1_current_pose = robot1_move_group.getCurrentPose().pose;
+                    auto temp = robot1_current_pose.position;
+                    float bot_steps = 0.003;
+                    if(key == '1'){
+                        bot_steps = 0.001;
+                    }else if(key == '2'){
+                        bot_steps = 0.002;
+                    }else if(key == '3'){
+                        bot_steps = 0.003;
+                    }else if(key == '4'){
+                        bot_steps = 0.004;
+                    }else if(key == '5'){
+                        bot_steps = 0.005;
+                    }else if(key == '6'){
+                        bot_steps = 0.006;
+                    }else if(key == '7'){
+                        bot_steps = 0.007;
+                    }else if(key == '8'){
+                        bot_steps = 0.008;
+                    }else if(key == '9'){
+                        bot_steps = 0.009;
+                    }else if(key == '0'){
+                        bot_steps = 0.010;
+                    }else if(key == 'w'){
+                        temp.y += bot_steps;
+                    }else if(key == 's'){
+                        temp.y -= bot_steps;
+                    }else if(key == 'a'){
+                        temp.x += bot_steps;
+                    }else if(key == 'd'){
+                        temp.x -= bot_steps;
+                    }else if(key == 'z'){
+                        temp.z += bot_steps;
+                    }else if(key == 'c'){
+                        temp.z -= bot_steps;
+                    }else if(key == 'q'){
                         break;
+                    }else{
+                        continue;
+                    }
+                    ret1 = robot1_go(temp, robot1_current_pose.orientation, robot1_move_group);
+                    if (!ret1)
+                    {
+                        std::cout << "wrong cartesian" << std::endl;
+                        return 0;
                     }
                 }
             }
 
             robot1_current_pose = robot1_move_group.getCurrentPose().pose;
+            ROS_INFO("#############current pose###############");
+            printCurrentState(robot1_current_pose);
+            ROS_INFO("#############current record###############");
+            printCurrentState(hole_loc_record[current_hole]);
+
             hole_loc_record[current_hole] = robot1_current_pose.position;
             hole_quat_record[current_hole] = robot1_current_pose.orientation;
 
             auto detect_xy = hole_detect::find_hole(cam_z);
+            while (1)
+            {
+                std::cout << "press space to next, or others to detect again" << std::endl;
+                char key = cv::waitKey(0);
+                if (key == ' ')
+                {
+                    break;
+                }else{
+                    detect_xy = hole_detect::find_hole(cam_z);
+                }
+            }    
+
             if (detect_xy.size() > 0)
             {
+                ROS_INFO(("hole_detect_record_base " + std::to_string(current_hole) + 
+                "\nx: " + std::to_string(detect_xy[0]) + 
+                "\ny: " + std::to_string(detect_xy[1])).c_str());
                 hole_detect_record_base[current_hole] = detect_xy;
+
+        std::cout << "press space; current hole " << current_hole << std::endl;
+        while (1)
+        {
+            char key = cv::waitKey(0);
+            if (key == ' ')
+            {
+                    break;
+            }
+        }
+
             }
             else
             {
@@ -573,23 +669,17 @@ int main(int argc, char *argv[])
             double bound = 0.005;
             auto loc_temp = hole_loc_record[current_hole];
 
-            ret1 = robot1_go(hole_loc_record[current_hole], hole_quat_record[current_hole], robot1_move_group);
-            if (!ret1)
-            {
-                std::cout << "wrong cartesian" << std::endl;
-                return 0;
-            }
-
             // go 0.005, 0
             loc_temp.x += bound;
-            ret1 = robot1_go(loc_temp, hole_quat_record[current_hole], robot1_move_group);
+            bool ret1 = robot1_go(loc_temp, hole_quat_record[current_hole], robot1_move_group);
             if (!ret1)
             {
                 std::cout << "wrong cartesian" << std::endl;
                 return 0;
             }
             auto cam_delta_xy1 = get_xy(cam_z, robot2_io_states_client);
-            cam_delta_xy1 -= hole_detect_record_base[current_hole];
+            cam_delta_xy1[0] -= hole_detect_record_base[current_hole][0];
+            cam_delta_xy1[1] -= hole_detect_record_base[current_hole][1];
 
             // go 0, 0.005
             loc_temp.x = hole_loc_record[current_hole].x;
@@ -601,12 +691,14 @@ int main(int argc, char *argv[])
                 return 0;
             }
             auto cam_delta_xy2 = get_xy(cam_z, robot2_io_states_client);
-            cam_delta_xy2 -= hole_detect_record_base[current_hole];
+            cam_delta_xy2[0] -= hole_detect_record_base[current_hole][0];
+            cam_delta_xy2[1] -= hole_detect_record_base[current_hole][1];
 
-            linear_cali_mat[0] = cam_delta_xy2.y / (cam_delta_xy1.x * cam_delta_xy2.y - cam_delta_xy1.y * cam_delta_xy2.x) * bound;
-            linear_cali_mat[3] = cam_delta_xy1.x / (cam_delta_xy1.x * cam_delta_xy2.y - cam_delta_xy1.y * cam_delta_xy2.x) * bound;
-            linear_cali_mat[1] = -cam_delta_xy1.y / (cam_delta_xy1.x * cam_delta_xy2.y - cam_delta_xy1.y * cam_delta_xy2.x) * bound;
-            linear_cali_mat[2] = -cam_delta_xy2.x / (cam_delta_xy1.x * cam_delta_xy2.y - cam_delta_xy1.y * cam_delta_xy2.x) * bound;
+            auto det_cali_mat = (cam_delta_xy1[0] * cam_delta_xy2[1] - cam_delta_xy1[1] * cam_delta_xy2[0]);
+            linear_cali_mat[0] = cam_delta_xy2[1] / det_cali_mat * bound;
+            linear_cali_mat[3] = cam_delta_xy1[0] / det_cali_mat * bound;
+            linear_cali_mat[1] = -cam_delta_xy1[1] / det_cali_mat * bound;
+            linear_cali_mat[2] = -cam_delta_xy2[0] / det_cali_mat * bound;
 
             std::cout << "liear_cali_mat: \n";
             std::cout << linear_cali_mat[0] << '\t' << linear_cali_mat[1] << '\n';
@@ -619,7 +711,7 @@ int main(int argc, char *argv[])
             geometry_msgs::Pose robot1_current_pose;
             bool ret1 = true;
 
-            if (robot1_wait_point.x != 0 && robot1_wait_quat.w != 0)
+            if (init_success)
             {
                 ret1 = robot1_go(robot1_wait_point, robot1_wait_quat, robot1_move_group);
                 if (!ret1)
@@ -636,7 +728,7 @@ int main(int argc, char *argv[])
             std::cout << "please move to wanted wait pos, press space to next step" << std::endl;
             while (1)
             {
-                char key = cv::waitKey(1);
+                char key = cv::waitKey(0);
                 if (key == ' ')
                 {
                     break;
@@ -647,78 +739,86 @@ int main(int argc, char *argv[])
             robot1_wait_quat = robot1_current_pose.orientation;
         }
 
-        for (int current_hole = 0; current_hole < total_holes; current_hole++)
-        {
-            ROS_INFO("calibrating hole " + std::to_string(current_hole) + ", screw_robot go");
-            geometry_msgs::Pose robot2_current_pose;
-            bool ret1 = true;
+        // for (int current_hole = 0; current_hole < total_holes; current_hole++)
+        // {
+        //     ROS_INFO(("calibrating hole " + std::to_string(current_hole) + ", screw_robot go").c_str());
+        //     geometry_msgs::Pose robot2_current_pose;
+        //     bool ret1 = true;
 
-            if (hole_loc_record2[current_hole].x != 0 && hole_quat_record2[current_hole].w != 0)
-            {
-                ret1 = robot2_go(hole_loc_record2[current_hole], hole_quat_record2[current_hole], robot2_move_group);
-                if (!ret1)
-                {
-                    std::cout << "wrong cartesian" << std::endl;
-                    return 0;
-                }
-            }
-            else
-            {
-                ROS_INFO("no init pos provided, move robot by hand");
-            }
+        //     if (init_success)
+        //     {
+        //         ret1 = robot2_go(hole_loc_record2[current_hole], hole_quat_record2[current_hole], robot2_move_group);
+        //         if (!ret1)
+        //         {
+        //             std::cout << "wrong cartesian" << std::endl;
+        //             return 0;
+        //         }
+        //     }
+        //     else
+        //     {
+        //         ROS_INFO("no init pos provided, move robot by hand");
+        //     }
 
-            std::cout << "press space to next step" << std::endl;
-            while (1)
-            {
-                char key = cv::waitKey(1);
-                if (key == ' ')
-                {
-                    break;
-                }
-            }
-            robot2_current_pose = robot2_move_group.getCurrentPose().pose;
-            hole_loc_record2[current_hole] = robot2_current_pose.position;
-            hole_quat_record2[current_hole] = robot2_current_pose.orientation;
-        }
+        //     std::cout << "press space to next step" << std::endl;
+        //     while (1)
+        //     {
+        //         char key = cv::waitKey(0);
+        //         if (key == ' ')
+        //         {
+        //             break;
+        //         }
+        //     }
+        //     robot2_current_pose = robot2_move_group.getCurrentPose().pose;
+        //     hole_loc_record2[current_hole] = robot2_current_pose.position;
+        //     hole_quat_record2[current_hole] = robot2_current_pose.orientation;
+        // }
 
-        {
-            ROS_INFO("calibrating screw_robot wait pos");
-            geometry_msgs::Pose robot2_current_pose;
-            bool ret1 = true;
+        // {
+        //     ROS_INFO("calibrating screw_robot wait pos");
+        //     geometry_msgs::Pose robot2_current_pose;
+        //     bool ret1 = true;
 
-            if (robot2_wait_point.x != 0 && robot2_wait_quat.w != 0)
-            {
-                ret1 = robot2_go(robot2_wait_point, robot2_wait_quat, robot2_move_group);
-                if (!ret1)
-                {
-                    std::cout << "wrong cartesian" << std::endl;
-                    return 0;
-                }
-            }
-            else
-            {
-                ROS_INFO("no init pos provided, move robot by hand");
-            }
+        //     if (init_success)
+        //     {
+        //         ret1 = robot2_go(robot2_wait_point, robot2_wait_quat, robot2_move_group);
+        //         if (!ret1)
+        //         {
+        //             std::cout << "wrong cartesian" << std::endl;
+        //             return 0;
+        //         }
+        //     }
+        //     else
+        //     {
+        //         ROS_INFO("no init pos provided, move robot by hand");
+        //     }
 
-            std::cout << "please move to wanted wait pos, press space to next step" << std::endl;
-            while (1)
-            {
-                char key = cv::waitKey(1);
-                if (key == ' ')
-                {
-                    break;
-                }
-            }
-            robot2_current_pose = robot2_move_group.getCurrentPose().pose;
-            robot2_wait_point = robot2_current_pose.position;
-            robot2_wait_quat = robot2_current_pose.orientation;
-        }
+        //     std::cout << "please move to wanted wait pos, press space to next step" << std::endl;
+        //     while (1)
+        //     {
+        //         char key = cv::waitKey(0);
+        //         if (key == ' ')
+        //         {
+        //             break;
+        //         }
+        //     }
+        //     robot2_current_pose = robot2_move_group.getCurrentPose().pose;
+        //     robot2_wait_point = robot2_current_pose.position;
+        //     robot2_wait_quat = robot2_current_pose.orientation;
+        // }
 
+        ROS_INFO("#############before save###############");
+        printCurrentState(hole_loc_record[0]);
+        printCurrentState(hole_loc_record[1]);
+        
         save_data();
+        
+        ROS_INFO("###############after save#############");
+        printCurrentState(hole_loc_record[0]);
+        printCurrentState(hole_loc_record[1]);
 
         robot2_io_states_srv.request.state = 0.0;
         robot2_io_states_client.call(robot2_io_states_srv);
-        ret1 = robot1_go(robot1_wait_point, robot1_wait_quat, robot1_move_group);
+        bool ret1 = robot1_go(robot1_wait_point, robot1_wait_quat, robot1_move_group);
         if (!ret1)
         {
             std::cout << "wrong cartesian" << std::endl;
@@ -733,6 +833,9 @@ int main(int argc, char *argv[])
         //move above
         int current_hole = 0;
         bool ret1 = true;
+
+        std::cout << "press space to hole " << current_hole << std::endl;
+
         ret1 = robot1_go(hole_loc_record[current_hole], hole_quat_record[current_hole], robot1_move_group);
         if (!ret1)
         {
@@ -745,6 +848,9 @@ int main(int argc, char *argv[])
 
         //MOVE TO NEXT HOLE
         current_hole++;
+
+        std::cout << "press space to hole " << current_hole << std::endl;
+
         ret1 = robot1_go(hole_loc_record[current_hole], hole_quat_record[current_hole], robot1_move_group);
         if (!ret1)
         {
