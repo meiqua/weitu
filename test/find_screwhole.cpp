@@ -687,6 +687,9 @@ int main(int argc, char *argv[])
                 double bound = 0.005;
                 auto loc_temp = hole_loc_record[current_hole];
 
+                cv::Mat cam_mat = cv::Mat(2, 2, CV_64FC1);
+                cv::Mat phy_mat = cv::Mat(2, 2, CV_64FC1);
+
                 // go 0.005, 0
                 loc_temp.x += bound;
                 bool ret1 = robot1_go(loc_temp, hole_quat_record[current_hole], robot1_move_group);
@@ -700,6 +703,14 @@ int main(int argc, char *argv[])
 
                 cam_delta_xy1[0] -= hole_detect_record_base[current_hole][0];
                 cam_delta_xy1[1] -= hole_detect_record_base[current_hole][1];
+
+                cam_mat.at<double>(0, 0) = cam_delta_xy1[0];
+                cam_mat.at<double>(1, 0) = cam_delta_xy1[1];
+
+                geometry_msgs::Pose robot1_current_pose;
+                robot1_current_pose = robot1_move_group.getCurrentPose().pose;
+                phy_mat.at<double>(0, 0) = robot1_current_pose.x - hole_loc_record[current_hole].x;
+                phy_mat.at<double>(1, 0) = robot1_current_pose.y - hole_loc_record[current_hole].y;
 
                 // go 0, 0.005
                 loc_temp.x = hole_loc_record[current_hole].x;
@@ -716,11 +727,20 @@ int main(int argc, char *argv[])
                 cam_delta_xy2[0] -= hole_detect_record_base[current_hole][0];
                 cam_delta_xy2[1] -= hole_detect_record_base[current_hole][1];
 
-                auto det_cali_mat = (cam_delta_xy1[0] * cam_delta_xy2[1] - cam_delta_xy1[1] * cam_delta_xy2[0]);
-                linear_cali_mat[0] = cam_delta_xy2[1] / det_cali_mat * bound;
-                linear_cali_mat[3] = cam_delta_xy1[0] / det_cali_mat * bound;
-                linear_cali_mat[1] = -cam_delta_xy1[1] / det_cali_mat * bound;
-                linear_cali_mat[2] = -cam_delta_xy2[0] / det_cali_mat * bound;
+                cam_mat.at<double>(0, 1) = cam_delta_xy2[0];
+                cam_mat.at<double>(1, 1) = cam_delta_xy2[1];
+
+                robot1_current_pose = robot1_move_group.getCurrentPose().pose;
+                phy_mat.at<double>(0, 1) = robot1_current_pose.x - hole_loc_record[current_hole].x;
+                phy_mat.at<double>(1, 1) = robot1_current_pose.y - hole_loc_record[current_hole].y;
+
+                // relative, bot plus means hole minus
+                auto linear_cv = (cam_mat.inv()) * (-phy_mat);
+
+                linear_cali_mat[0] = cam_mat.at<double>(0, 0);
+                linear_cali_mat[1] = cam_mat.at<double>(0, 1);
+                linear_cali_mat[2] = cam_mat.at<double>(1, 0);
+                linear_cali_mat[3] = cam_mat.at<double>(1, 1);
 
                 std::cout << "liear_cali_mat: \n";
                 std::cout << linear_cali_mat[0] << '\t' << linear_cali_mat[1] << '\n';
@@ -897,6 +917,15 @@ int main(int argc, char *argv[])
             double delta_x, delta_y;
             delta_x = linear_cali_mat[0] * cam_delta_x + linear_cali_mat[1] * cam_delta_y;
             delta_y = linear_cali_mat[2] * cam_delta_x + linear_cali_mat[3] * cam_delta_y;
+
+            geometry_msgs::Pose robot1_current_pose;
+            robot1_current_pose = robot1_move_group.getCurrentPose().pose;
+            double bot1_dx = robot1_current_pose.x - hole_loc_record[current_hole].x;
+            double bot1_dy = robot1_current_pose.y - hole_loc_record[current_hole].y;
+
+            delta_x += bot1_dx;
+            delta_y += bot1_dy;
+
             std::cout << "delta x: " << delta_x << std::endl;
             std::cout << "delta y: " << delta_y << std::endl;
 
@@ -926,6 +955,14 @@ int main(int argc, char *argv[])
             double delta_x, delta_y;
             delta_x = linear_cali_mat[0] * cam_delta_x + linear_cali_mat[1] * cam_delta_y;
             delta_y = linear_cali_mat[2] * cam_delta_x + linear_cali_mat[3] * cam_delta_y;
+
+            geometry_msgs::Pose robot1_current_pose;
+            robot1_current_pose = robot1_move_group.getCurrentPose().pose;
+            double bot1_dx = robot1_current_pose.x - hole_loc_record[current_hole].x;
+            double bot1_dy = robot1_current_pose.y - hole_loc_record[current_hole].y;
+
+            delta_x += bot1_dx;
+            delta_y += bot1_dy;
             std::cout << "delta x: " << delta_x << std::endl;
             std::cout << "delta y: " << delta_y << std::endl;
 
