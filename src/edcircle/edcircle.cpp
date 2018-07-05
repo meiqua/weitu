@@ -1123,6 +1123,31 @@ double collect(int n, int i)
 	return(result);
 }
 
+double collect_safe(int n, int r) {
+    double factor1 = 0.125;
+    double factor2 = 0.875;
+    if(r > n / 2) {
+        r = n - r;
+        double temp = factor1;
+        factor1 = factor2;
+        factor2 = temp;
+    } // because C(n, r) == C(n, n - r)
+    double ans = 1;
+    int i;
+
+    for(i = 1; i <= r; i++) {
+        ans *= n - r + i;
+        ans /= i;
+        ans *= factor1;
+        ans *= factor2;
+    }
+    for(i = 0; i<(n-2*r); i++){
+        ans *= factor2;
+    }
+
+    return ans;
+}
+
 float helmholtz(vector<link_circle>::iterator circle_list_iter, Mat sobelx, Mat sobely)
 {
 	int k = 0;
@@ -1159,9 +1184,17 @@ float helmholtz(vector<link_circle>::iterator circle_list_iter, Mat sobelx, Mat 
 	for (int i = k; i <= n; i++)
 	{
 //		alpha = collect(n, i);
-		alpha = alpha +collect(n,i)*pow(0.125, i)*pow(0.875, n - i);
+		// alpha = alpha +collect(n,i)*pow(0.125, i)*pow(0.875, n - i);
+		alpha = alpha +collect_safe(n,i);
 	}
 	alpha = alpha*pow(N, 5);
+
+	// if(k>n/3 && n>N/40){
+	// 	return 0;
+	// }else{
+	// 	return 10;
+	// }
+
 	return(alpha);
 }
 
