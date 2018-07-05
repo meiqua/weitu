@@ -246,7 +246,7 @@ bool robot1_go(geometry_msgs::Point p, geometry_msgs::Quaternion q, moveit::plan
     }
 
     ROS_WARN("Robot1 cartesian path. (%.2f%% achieved)", fraction * 100.0);
-    // ros::Duration(1.0).sleep();
+    ros::Duration(1.0).sleep();
     moveit::planning_interface::MoveGroupInterface::Plan robot1_plan1;
     robot1_plan1.trajectory_ = trajectory1;
     robot1_move_group.execute(robot1_plan1);
@@ -321,7 +321,7 @@ bool robot2_go2(geometry_msgs::Point p, geometry_msgs::Quaternion q, moveit::pla
     }
 
     ROS_WARN("Robot2 cartesian path. (%.2f%% achieved)", fraction * 100.0);
-    // ros::Duration(1.0).sleep();
+    ros::Duration(1.0).sleep();
     moveit::planning_interface::MoveGroupInterface::Plan robot2_plan1;
     robot2_plan1.trajectory_ = trajectory3;
     robot2_move_group.execute(robot2_plan1);
@@ -465,12 +465,12 @@ int main(int argc, char *argv[])
     if (data_from_file)
     {
         load_data();
-        init_success = false;
+        init_success = true;
     }
     else
     {
-        record_init();
-        init_success = false;
+        // record_init();
+        // init_success = false;
     }
 
     ros::init(argc, argv, "dual_arm");
@@ -510,7 +510,7 @@ int main(int argc, char *argv[])
     ros::AsyncSpinner spinner(2);
     spinner.start();
 
-    // init_data_cali = false;
+    init_data_cali = false;
     if (init_data_cali)
     {
         std::cout << "init calibrating..." << std::endl;
@@ -848,7 +848,11 @@ int main(int argc, char *argv[])
         int current_hole = 0;
         bool ret1 = true;
 
-        ret1 = robot1_go(hole_loc_record[current_hole], hole_quat_record[current_hole], robot1_move_group);
+        auto temp1 = hole_loc_record[current_hole];
+        temp1.x += 0.006;
+        temp1.y += 0.004;
+
+        ret1 = robot1_go(temp1, hole_quat_record[current_hole], robot1_move_group);
         if (!ret1)
         {
             std::cout << "wrong cartesian" << std::endl;
@@ -861,7 +865,11 @@ int main(int argc, char *argv[])
         //MOVE TO NEXT HOLE
         current_hole++;
 
-        ret1 = robot1_go(hole_loc_record[current_hole], hole_quat_record[current_hole], robot1_move_group);
+        temp1 = hole_loc_record[current_hole];
+        temp1.x += 0.006;
+        temp1.y += 0.004;
+
+        ret1 = robot1_go(temp1, hole_quat_record[current_hole], robot1_move_group);
         if (!ret1)
         {
             std::cout << "wrong cartesian" << std::endl;
@@ -899,10 +907,8 @@ int main(int argc, char *argv[])
             // robot2_go(point_, hole_quat_record2[current_hole], robot2_move_group);
         }
 
-        printCurrentState(hole_loc_record2[current_hole]);
-
         robot2_go(hole_loc_record2[current_hole], hole_quat_record2[current_hole], robot2_move_group);
-        screw_hole(robot2_io_states_client);
+        // screw_hole(robot2_io_states_client);
 
         // //robot2 begin to screw
         // //1.分料 DO2
@@ -930,7 +936,7 @@ int main(int argc, char *argv[])
             // robot2_go(point_, hole_quat_record2[current_hole], robot2_move_group);
         }
         robot2_go(hole_loc_record2[current_hole], hole_quat_record2[current_hole], robot2_move_group);
-        screw_hole(robot2_io_states_client);
+        // screw_hole(robot2_io_states_client);
         //robot2 move away
         ROS_INFO("robot2 move away");
         robot2_go2(robot2_wait_point, robot2_wait_quat, robot2_move_group);
