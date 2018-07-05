@@ -359,12 +359,10 @@ cv::Point find(cv::Mat src, bool denoise)
                 }
             }
             cv::cvtColor(ave_rgb, src, CV_BGR2GRAY);
-            medianBlur(src, src, 5);
-            medianBlur(src, src, 5);
+            // medianBlur(src, src, 5);
+            // medianBlur(src, src, 5);
             // cv::threshold(src, src, 0, 255, CV_THRESH_OTSU);
-            GaussianBlur(src, src, cv::Size(5, 5), 1);
-
-            
+            GaussianBlur(src, src, cv::Size(3, 3), 3);
         }
     }
 
