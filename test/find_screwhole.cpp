@@ -459,6 +459,7 @@ void screw_hole(ros::ServiceClient &robot2_io_states_client)
 
 int main(int argc, char *argv[])
 {
+    // at least open one window for waitkey
     auto show_1 = cv::imread("1.png");
     cv::imshow("1", show_1);
 
@@ -926,8 +927,10 @@ int main(int argc, char *argv[])
             delta_x += bot1_dx;
             delta_y += bot1_dy;
 
+            std::cout << "\n####################" << std::endl;
             std::cout << "delta x: " << delta_x << std::endl;
             std::cout << "delta y: " << delta_y << std::endl;
+            std::cout << "####################\n" << std::endl;
 
             auto point_ = hole_loc_record2[current_hole];
             point_.x += delta_x;
@@ -963,8 +966,11 @@ int main(int argc, char *argv[])
 
             delta_x += bot1_dx;
             delta_y += bot1_dy;
+
+            std::cout << "\n####################" << std::endl;
             std::cout << "delta x: " << delta_x << std::endl;
             std::cout << "delta y: " << delta_y << std::endl;
+            std::cout << "####################\n" << std::endl;
 
             auto point_ = hole_loc_record2[current_hole];
             point_.x += delta_x;
