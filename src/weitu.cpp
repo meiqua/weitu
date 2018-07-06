@@ -138,9 +138,6 @@ static int32_t GENICAM_disconnect(GENICAM_Camera *pGetCamera)
 
 bool Camera::open(uint32_t i)
 {
-    if (forbid_cout)
-        std::cout.setstate(std::ios_base::failbit);
-
     int32_t ret;
     GENICAM_System *pSystem = NULL;
     GENICAM_Camera *pCameraList = NULL;
@@ -150,8 +147,6 @@ bool Camera::open(uint32_t i)
     if (-1 == ret)
     {
         printf("pSystem is null.\r\n");
-        if (forbid_cout)
-            std::cout.clear();
         return false;
     }
 
@@ -159,16 +154,12 @@ bool Camera::open(uint32_t i)
     if (-1 == ret)
     {
         printf("discovery device fail.\r\n");
-        if (forbid_cout)
-            std::cout.clear();
         return false;
     }
 
     if (cameraCnt < i + 1)
     {
         printf("no enough Camera is discovered.\r\n");
-        if (forbid_cout)
-            std::cout.clear();
         return false;
     }
 
@@ -179,8 +170,6 @@ bool Camera::open(uint32_t i)
     if (ret != 0)
     {
         printf("connect cameral failed.\n");
-        if (forbid_cout)
-            std::cout.clear();
         return false;
     }
 
@@ -190,8 +179,6 @@ bool Camera::open(uint32_t i)
     if (ret != 0)
     {
         printf("create stream obj  fail.\r\n");
-        if (forbid_cout)
-            std::cout.clear();
         return false;
     }
 
@@ -199,25 +186,16 @@ bool Camera::open(uint32_t i)
     if (ret != 0)
     {
         printf("StartGrabbing  fail.\n");
-        if (forbid_cout)
-            std::cout.clear();
         return false;
     }
     open_flag = true;
-    if (forbid_cout)
-        std::cout.clear();
     return true;
 }
 
 cv::Mat Camera::get()
 {
-    if (forbid_cout)
-        std::cout.setstate(std::ios_base::failbit);
-
     if (!open_flag)
     {
-        if (forbid_cout)
-            std::cout.clear();
         return cv::Mat();
     }
 
@@ -226,8 +204,6 @@ cv::Mat Camera::get()
 
     if (NULL == pStreamSource)
     {
-        if (forbid_cout)
-            std::cout.clear();
         return cv::Mat();
     }
 
@@ -235,8 +211,6 @@ cv::Mat Camera::get()
     if (ret < 0)
     {
         printf("getFrame  fail.\n");
-        if (forbid_cout)
-            std::cout.clear();
         return cv::Mat();
     }
 
@@ -245,8 +219,6 @@ cv::Mat Camera::get()
     {
         printf("frame is invalid!\n");
         pFrame->release(pFrame);
-        if (forbid_cout)
-            std::cout.clear();
         return cv::Mat();
     }
     //    printf("get frame id = [%ld] successfully!\n", pFrame->getBlockId(pFrame));
@@ -259,15 +231,11 @@ cv::Mat Camera::get()
     cv::Mat result = cv::Mat(rows, cols, CV_8UC1, dest);
     pFrame->release(pFrame);
 
-    if (forbid_cout)
-        std::cout.clear();
     return result;
 }
 
 void Camera::close()
 {
-    if (forbid_cout)
-        std::cout.setstate(std::ios_base::failbit);
 
     if (open_flag)
     {
@@ -281,9 +249,6 @@ void Camera::close()
         pStreamSource->release(pStreamSource);
         open_flag = false;
     }
-
-    if (forbid_cout)
-        std::cout.clear();
 }
 
 } // namespace weitu
