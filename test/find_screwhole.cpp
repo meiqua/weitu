@@ -31,7 +31,7 @@ static geometry_msgs::Quaternion robot1_wait_quat;
 static geometry_msgs::Point robot2_wait_point;
 static geometry_msgs::Quaternion robot2_wait_quat;
 
-static double cam_z = 1.211108 - 1.211108 + 0.227 + 0.007;
+static double cam_z = 0.234;
 static std::vector<std::vector<double>> hole_detect_record_base(total_holes, {0, 0});
 static std::vector<std::vector<double>> delta_xy(total_holes, {0, 0});
 static double linear_cali_mat[4] = {1, 0, 0, 1};
@@ -59,9 +59,10 @@ void save_point_quat(geometry_msgs::Point &robot1_wait_point, std::string str_ro
     fs << (str_robot1_wait_quat + "_w") << robot1_wait_quat.w;
 }
 
+template <typename T>
 void load_point_quat(geometry_msgs::Point &robot1_wait_point, std::string str_robot1_wait_point,
                      geometry_msgs::Quaternion &robot1_wait_quat,
-                     std::string str_robot1_wait_quat, cv::FileStorage &fs)
+                     std::string str_robot1_wait_quat, T &fs)
 {
     robot1_wait_point.x = (double)(fs)[str_robot1_wait_point + "_x"];
     robot1_wait_point.y = (double)(fs)[str_robot1_wait_point + "_y"];
@@ -70,18 +71,6 @@ void load_point_quat(geometry_msgs::Point &robot1_wait_point, std::string str_ro
     robot1_wait_quat.y = (double)(fs)[str_robot1_wait_quat + "_y"];
     robot1_wait_quat.z = (double)(fs)[str_robot1_wait_quat + "_z"];
     robot1_wait_quat.w = (double)(fs)[str_robot1_wait_quat + "_w"];
-}
-void load_point_quat(geometry_msgs::Point &robot1_wait_point, std::string str_robot1_wait_point,
-                     geometry_msgs::Quaternion &robot1_wait_quat,
-                     std::string str_robot1_wait_quat, cv::FileNode &it)
-{
-    robot1_wait_point.x = (double)(it)[str_robot1_wait_point + "_x"];
-    robot1_wait_point.y = (double)(it)[str_robot1_wait_point + "_y"];
-    robot1_wait_point.z = (double)(it)[str_robot1_wait_point + "_z"];
-    robot1_wait_quat.x = (double)(it)[str_robot1_wait_quat + "_x"];
-    robot1_wait_quat.y = (double)(it)[str_robot1_wait_quat + "_y"];
-    robot1_wait_quat.z = (double)(it)[str_robot1_wait_quat + "_z"];
-    robot1_wait_quat.w = (double)(it)[str_robot1_wait_quat + "_w"];
 }
 
 void save_data()
@@ -292,20 +281,6 @@ std::vector<double> get_xy(double cam_z)
     return result;
 }
 
-void printCurrentState(geometry_msgs::Pose current_pose)
-{
-    ROS_INFO("current pose x : %lf", current_pose.position.x);
-    ROS_INFO("current pose y : %lf", current_pose.position.y);
-    ROS_INFO("current pose z : %lf", current_pose.position.z);
-}
-
-void printCurrentState(geometry_msgs::Point current_pose)
-{
-    ROS_INFO("current pose x : %lf", current_pose.x);
-    ROS_INFO("current pose y : %lf", current_pose.y);
-    ROS_INFO("current pose z : %lf", current_pose.z);
-}
-
 void screw_hole()
 {
     int setio_fun = 1;
@@ -343,7 +318,7 @@ void screw_hole()
     robot2_io_states_client.call(robot2_io_states_srv);
 }
 
-void signal_handler(int signal)
+void SIGINT_handler(int signal)
 {
     if (init_success)
     {
@@ -358,7 +333,7 @@ void signal_handler(int signal)
 
 int main(int argc, char *argv[])
 {
-    std::signal(SIGINT, signal_handler);
+    std::signal(SIGINT, SIGINT_handler);
 
     // at least open one window for waitkey
     auto show_1 = cv::imread("1.png");
@@ -368,11 +343,8 @@ int main(int argc, char *argv[])
 
     ros::init(argc, argv, "dual_arm");
     ros::NodeHandle nh;
-
     robot1_move_group.setEndEffectorLink("robot1_camera_eef_link");
-
     robot2_io_states_client = nh.serviceClient<ur_msgs::SetIO>("robot2/ur_driver/set_io");
-
     ros::AsyncSpinner spinner(2);
     spinner.start();
 
