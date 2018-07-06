@@ -16,55 +16,60 @@
 
 class Timer
 {
-public:
+  public:
     Timer() : beg_(clock_::now()) {}
     void reset() { beg_ = clock_::now(); }
-    double elapsed() const {
-        return std::chrono::duration_cast<second_>
-            (clock_::now() - beg_).count(); }
-    void out(std::string message = ""){
+    double elapsed() const
+    {
+        return std::chrono::duration_cast<second_>(clock_::now() - beg_).count();
+    }
+    void out(std::string message = "")
+    {
         double t = elapsed();
         std::cout << message << "  elasped time:" << t << "s" << std::endl;
         reset();
     }
-private:
+
+  private:
     typedef std::chrono::high_resolution_clock clock_;
-    typedef std::chrono::duration<double, std::ratio<1> > second_;
+    typedef std::chrono::duration<double, std::ratio<1>> second_;
     std::chrono::time_point<clock_> beg_;
 };
 
-namespace weitu {
+namespace weitu
+{
 
-class Camera{
-public:
-    bool forbid_cout = true;
-    bool open(uint32_t i=0);
+class Camera
+{
+  public:
+    bool open(uint32_t i = 0);
     cv::Mat get();
     void close();
     ~Camera()
     {
         close();
     }
-private:
+
+  private:
     bool open_flag = false;
 
     GENICAM_Camera *pCamera = NULL;
     GENICAM_StreamSource *pStreamSource = NULL;
 };
 
-}
+} // namespace weitu
 
-namespace qr_pattern {
+namespace qr_pattern
+{
 
 std::vector<FinderPattern> find(cv::Mat src);
-
 }
 
-namespace hole_detect {
+namespace hole_detect
+{
 
 cv::Point find(cv::Mat src, bool denoise = false);
 std::vector<double> find_hole(double z, double timeout = 3, int cam_id = 0);
-}
-
+} // namespace hole_detect
 
 #endif
