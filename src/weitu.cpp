@@ -402,14 +402,16 @@ cv::Point find(cv::Mat src, bool denoise, bool hough)
     double closest = std::numeric_limits<double>::max();
     for (int i = 0; i < centers.size(); i++)
     {
-        auto &p = centers[i];
-        auto p2c = p - c;
-        double dist = p2c.x * p2c.x + p2c.y * p2c.y;
-        if (dist < closest)
-        {
-            closest = dist;
-            best_p = p;
-            best_r = radiuses[i];
+        if(radiuses[i]>src.rows/100){
+            auto &p = centers[i];
+            auto p2c = p - c;
+            double dist = p2c.x * p2c.x + p2c.y * p2c.y;
+            if (dist < closest)
+            {
+                closest = dist;
+                best_p = p;
+                best_r = radiuses[i];
+            }
         }
     }
 
@@ -417,14 +419,16 @@ cv::Point find(cv::Mat src, bool denoise, bool hough)
     float smallest_r = best_r;
     for (int i = 0; i < centers.size(); i++)
     {
-        auto &p = centers[i];
-        auto p2c = p - best_p;
-        double dist = std::sqrt(p2c.x * p2c.x + p2c.y * p2c.y);
-        if (dist < src.rows / 10)
-        {
-            if(radiuses[i] < smallest_r){
-                smallest_r = radiuses[i];
-                best_p_smallest = p;
+        if(radiuses[i]>src.rows/100){
+            auto &p = centers[i];
+            auto p2c = p - best_p;
+            double dist = std::sqrt(p2c.x * p2c.x + p2c.y * p2c.y);
+            if (dist < src.rows / 10)
+            {
+                if(radiuses[i] < smallest_r){
+                    smallest_r = radiuses[i];
+                    best_p_smallest = p;
+                }
             }
         }
     }
@@ -438,6 +442,7 @@ cv::Point find(cv::Mat src, bool denoise, bool hough)
         cv::cvtColor(src, to_show, CV_GRAY2BGR);
          for (int i = 0; i < centers.size(); i++)
          {
+             if(radiuses[i]>src.rows/100)
              cv::circle(to_show, centers[i], radiuses[i], {0, 0, 255}, 2);
          }
          cv::line(to_show, cv::Point(best_p.x, best_p.y - best_r / 2), cv::Point(best_p.x, best_p.y + best_r / 2), cv::Scalar(0, 255, 0), 2);

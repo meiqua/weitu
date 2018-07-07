@@ -46,7 +46,7 @@ void hole_test(){
 //    int start_rows = rgb.rows / 4;
 //    cv::Rect roi(start_cols, start_rows, rgb.cols / 2, rgb.rows / 2);
 //    auto p = hole_detect::find(rgb(roi), true);
-    auto p = hole_detect::find(rgb, true);
+    auto p = hole_detect::find(rgb, false);
 
     timer.out("detect time");
     waitKey(0);
