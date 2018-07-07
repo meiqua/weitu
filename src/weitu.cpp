@@ -314,6 +314,8 @@ cv::Point find(cv::Mat src, bool denoise)
     bool vis_result = true;
     bool vis_center = true;
 
+    // GaussianBlur(src, src, cv::Size(3, 3), 3);
+
     cv::Mat rgb = src.clone();
     if (src.channels() == 3)
     {
@@ -363,9 +365,10 @@ cv::Point find(cv::Mat src, bool denoise)
                 }
             }
             cv::cvtColor(ave_rgb, src, CV_BGR2GRAY);
-            // medianBlur(src, src, 5);
+            for(int i=0; i<20; i++)
+            medianBlur(src, src, 3);
             // cv::threshold(src, src, 0, 255, CV_THRESH_OTSU);
-            GaussianBlur(src, src, cv::Size(3, 3), 3);
+            // GaussianBlur(src, src, cv::Size(3, 3), 3);
         }
     }
 
@@ -386,7 +389,7 @@ cv::Point find(cv::Mat src, bool denoise)
 
     cv::Point c = {src.cols / 2, src.rows / 2};
     cv::Point best_p;
-    int best_r;
+    float best_r;
     double closest = std::numeric_limits<double>::max();
     for (int i = 0; i < centers.size(); i++)
     {
@@ -397,7 +400,23 @@ cv::Point find(cv::Mat src, bool denoise)
         {
             closest = dist;
             best_p = p;
-            best_r = int(radiuses[i]);
+            best_r = radiuses[i];
+        }
+    }
+
+    cv::Point best_p_smallest = best_p;
+    float smallest_r = best_r;
+    for (int i = 0; i < centers.size(); i++)
+    {
+        auto &p = centers[i];
+        auto p2c = p - best_p;
+        double dist = std::sqrt(p2c.x * p2c.x + p2c.y * p2c.y);
+        if (dist < src.rows / 10)
+        {
+            if(radiuses[i] < smallest_r){
+                smallest_r = radiuses[i];
+                best_p_smallest = p;
+            }
         }
     }
 
@@ -405,25 +424,25 @@ cv::Point find(cv::Mat src, bool denoise)
     {
         cv::Mat to_show;
         cv::cvtColor(src, to_show, CV_GRAY2BGR);
-        for (int i = 0; i < centers.size(); i++)
-        {
-            cv::circle(to_show, centers[i], radiuses[i], {0, 0, 255}, 2);
-        }
-        cv::line(to_show, cv::Point(best_p.x, best_p.y - best_r / 2), cv::Point(best_p.x, best_p.y + best_r / 2), cv::Scalar(0, 255, 0), 2);
-        cv::line(to_show, cv::Point(best_p.x - best_r / 2, best_p.y), cv::Point(best_p.x + best_r / 2, best_p.y), cv::Scalar(0, 255, 0), 2);
+        // for (int i = 0; i < centers.size(); i++)
+        // {
+        //     cv::circle(to_show, centers[i], radiuses[i], {0, 0, 255}, 2);
+        // }
+        // cv::line(to_show, cv::Point(best_p.x, best_p.y - best_r / 2), cv::Point(best_p.x, best_p.y + best_r / 2), cv::Scalar(0, 255, 0), 2);
+        // cv::line(to_show, cv::Point(best_p.x - best_r / 2, best_p.y), cv::Point(best_p.x + best_r / 2, best_p.y), cv::Scalar(0, 255, 0), 2);
 
-        if (vis_center)
-        {
-            cv::circle(to_show, {to_show.cols / 2, to_show.rows / 2}, 1, {255, 255, 0}, 2);
-            cv::circle(to_show, {to_show.cols / 2, to_show.rows / 2}, best_r / 2, {255, 255, 0}, 2);
-            cv::line(to_show, {to_show.cols / 2, to_show.rows / 2}, cv::Point(best_p.x, best_p.y), cv::Scalar(0, 255, 255), 1);
-        }
+        // if (vis_center)
+        // {
+        //     cv::circle(to_show, {to_show.cols / 2, to_show.rows / 2}, 1, {255, 255, 0}, 2);
+        //     cv::circle(to_show, {to_show.cols / 2, to_show.rows / 2}, best_r / 2, {255, 255, 0}, 2);
+        //     cv::line(to_show, {to_show.cols / 2, to_show.rows / 2}, cv::Point(best_p.x, best_p.y), cv::Scalar(0, 255, 255), 1);
+        // }
         // cv::pyrDown(to_show, to_show);
         cv::resize(to_show, to_show, {to_show.cols * 1024 / to_show.rows, 1024});
         cv::imshow("hole detect", to_show);
         cv::waitKey(1);
     }
-    return best_p;
+    return best_p_smallest;
 }
 
 std::vector<double> find_hole(double z, double timeout, int cam_id)
@@ -456,7 +475,7 @@ std::vector<double> find_hole(double z, double timeout, int cam_id)
             start_rows = rgb.rows / 4;
             cv::Rect roi(start_cols, start_rows, rgb.cols / 2, rgb.rows / 2);
             // cv::pyrDown(rgb, rgb);
-            hole_img_point = hole_detect::find(rgb(roi), true);
+            hole_img_point = hole_detect::find(rgb(roi), false);
             if (hole_img_point.x == 0)
                 continue;
             break;

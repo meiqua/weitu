@@ -181,17 +181,17 @@ bool screw_bot_go(geometry_msgs::Point p, geometry_msgs::Quaternion q, moveit::p
     robot2_move_group.setMaxVelocityScalingFactor(0.1);
     waypoints.clear();
 
-    // geometry_msgs::Pose robot2_current_pose;
-    // robot2_current_pose = robot2_move_group.getCurrentPose().pose;
-    // robot2_current_pose.position.z += 0.1;
-    // waypoints.push_back(robot2_current_pose);
+    geometry_msgs::Pose robot2_current_pose = robot2_move_group.getCurrentPose().pose;
+    robot2_current_pose = robot2_move_group.getCurrentPose().pose;
+    robot2_current_pose.position.z += 0.1;
+    waypoints.push_back(robot2_current_pose);
 
     geometry_msgs::Pose screw_hole_pose1;
     screw_hole_pose1.position = p;
     screw_hole_pose1.orientation = q;
     geometry_msgs::Pose mid_pose;
     mid_pose = screw_hole_pose1;
-    mid_pose.position.z += 0.1;
+    mid_pose.position.z = robot2_current_pose.position.z;
     waypoints.push_back(mid_pose);
     waypoints.push_back(screw_hole_pose1);
     moveit_msgs::RobotTrajectory trajectory3;
@@ -219,7 +219,7 @@ bool screw_bot_go_wait(geometry_msgs::Point p, geometry_msgs::Quaternion q, move
 
     robot2_move_group.setMaxVelocityScalingFactor(0.1);
     waypoints.clear();
-    geometry_msgs::Pose robot2_current_pose;
+    geometry_msgs::Pose robot2_current_pose = robot2_move_group.getCurrentPose().pose;
     robot2_current_pose = robot2_move_group.getCurrentPose().pose;
 
     geometry_msgs::Pose mid_pose;
@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
 
     init_success = true;
 
-    // init_data_cali = false;
+    init_data_cali = false;
     if (init_data_cali)
     {
         std::cout << "init calibrating..." << std::endl;
@@ -370,7 +370,7 @@ int main(int argc, char *argv[])
             for (int current_hole = 0; current_hole < total_holes; current_hole++)
             {
                 ROS_INFO(("calibrating hole " + std::to_string(current_hole) + ", cam_robot go").c_str());
-                geometry_msgs::Pose robot1_current_pose;
+                geometry_msgs::Pose robot1_current_pose = robot1_move_group.getCurrentPose().pose;;
                 bool ret1 = true;
 
                 if (init_success)
@@ -523,6 +523,7 @@ int main(int argc, char *argv[])
                     return 0;
                 }
             }
+            save_data();
             if (linear_cali)
             {
                 int current_hole = 0;
@@ -550,7 +551,7 @@ int main(int argc, char *argv[])
                 cam_mat.at<double>(0, 0) = cam_delta_xy1[0];
                 cam_mat.at<double>(1, 0) = cam_delta_xy1[1];
 
-                geometry_msgs::Pose robot1_current_pose;
+                geometry_msgs::Pose robot1_current_pose = robot1_move_group.getCurrentPose().pose;;
                 robot1_current_pose = robot1_move_group.getCurrentPose().pose;
                 phy_mat.at<double>(0, 0) = robot1_current_pose.position.x - hole_loc_record[current_hole].x;
                 phy_mat.at<double>(1, 0) = robot1_current_pose.position.y - hole_loc_record[current_hole].y;
@@ -578,21 +579,25 @@ int main(int argc, char *argv[])
                 phy_mat.at<double>(1, 1) = robot1_current_pose.position.y - hole_loc_record[current_hole].y;
 
                 // relative, bot plus means hole minus
-                auto linear_cv = (cam_mat.inv()) * (-phy_mat);
+                cv::Mat linear_cv = (cam_mat.inv()) * (-phy_mat);
 
-                linear_cali_mat[0] = cam_mat.at<double>(0, 0);
-                linear_cali_mat[1] = cam_mat.at<double>(0, 1);
-                linear_cali_mat[2] = cam_mat.at<double>(1, 0);
-                linear_cali_mat[3] = cam_mat.at<double>(1, 1);
+                linear_cali_mat[0] = linear_cv.at<double>(0, 0);
+                linear_cali_mat[1] = linear_cv.at<double>(0, 1);
+                linear_cali_mat[2] = linear_cv.at<double>(1, 0);
+                linear_cali_mat[3] = linear_cv.at<double>(1, 1);
+
+                std::cout << "cam_mat: \n" << cam_mat << std::endl;
+                std::cout << "phy_mat: \n" << phy_mat << std::endl;
 
                 std::cout << "liear_cali_mat: \n";
                 std::cout << linear_cali_mat[0] << '\t' << linear_cali_mat[1] << '\n';
                 std::cout << linear_cali_mat[2] << '\t' << linear_cali_mat[3] << '\n'
                           << std::endl;
             }
+            save_data();
             {
                 ROS_INFO("calibrating cam_robot wait pos");
-                geometry_msgs::Pose robot1_current_pose;
+                geometry_msgs::Pose robot1_current_pose = robot1_move_group.getCurrentPose().pose;
                 bool ret1 = true;
 
                 if (init_success)
@@ -622,23 +627,24 @@ int main(int argc, char *argv[])
                 robot1_wait_point = robot1_current_pose.position;
                 robot1_wait_quat = robot1_current_pose.orientation;
             }
+            save_data();
 
             robot2_io_states_srv.request.state = 0.0;
             robot2_io_states_client.call(robot2_io_states_srv);
         }
 
-        bool screw_bot_cali = false;
+        bool screw_bot_cali = true;
         if (screw_bot_cali)
         {
             for (int current_hole = 0; current_hole < total_holes; current_hole++)
             {
                 ROS_INFO(("calibrating hole " + std::to_string(current_hole) + ", screw_robot go").c_str());
-                geometry_msgs::Pose robot2_current_pose;
+                geometry_msgs::Pose robot2_current_pose  = robot2_move_group.getCurrentPose().pose;
                 bool ret1 = true;
 
                 if (init_success)
                 {
-                    ret1 = screw_bot_go_wait(hole_loc_record2[current_hole], hole_quat_record2[current_hole], robot2_move_group);
+                    ret1 = screw_bot_go(hole_loc_record2[current_hole], hole_quat_record2[current_hole], robot2_move_group);
                     if (!ret1)
                     {
                         std::cout << "wrong cartesian" << std::endl;
@@ -663,15 +669,16 @@ int main(int argc, char *argv[])
                 hole_loc_record2[current_hole] = robot2_current_pose.position;
                 hole_quat_record2[current_hole] = robot2_current_pose.orientation;
             }
+            save_data();
 
             {
                 ROS_INFO("calibrating screw_robot wait pos");
-                geometry_msgs::Pose robot2_current_pose;
+                geometry_msgs::Pose robot2_current_pose = robot2_move_group.getCurrentPose().pose;
                 bool ret1 = true;
 
                 if (init_success)
                 {
-                    ret1 = screw_bot_go(robot2_wait_point, robot2_wait_quat, robot2_move_group);
+                    ret1 = screw_bot_go_wait(robot2_wait_point, robot2_wait_quat, robot2_move_group);
                     if (!ret1)
                     {
                         std::cout << "wrong cartesian" << std::endl;
@@ -696,6 +703,7 @@ int main(int argc, char *argv[])
                 robot2_wait_point = robot2_current_pose.position;
                 robot2_wait_quat = robot2_current_pose.orientation;
             }
+            save_data();
         }
 
         save_data();
@@ -711,8 +719,8 @@ int main(int argc, char *argv[])
         {
             ROS_INFO(("hole " + std::to_string(current_hole) + ", cam_robot move").c_str());
             auto temp1 = hole_loc_record[current_hole];
-            temp1.x += 0.006;
-            temp1.y += 0.004;
+            // temp1.x += 0.006;
+            // temp1.y += 0.004;
 
             if (!cam_bot_go(temp1, hole_quat_record[current_hole], robot1_move_group))
             {
@@ -723,6 +731,8 @@ int main(int argc, char *argv[])
             if (use_cam)
             {
                 auto cam_xy = get_xy(cam_z);
+                cv::waitKey(0);
+
                 if (cam_xy.size() > 0)
                 {
 
@@ -733,10 +743,10 @@ int main(int argc, char *argv[])
                     delta_x = linear_cali_mat[0] * cam_delta_x + linear_cali_mat[1] * cam_delta_y;
                     delta_y = linear_cali_mat[2] * cam_delta_x + linear_cali_mat[3] * cam_delta_y;
 
-                    geometry_msgs::Pose robot1_current_pose;
+                    geometry_msgs::Pose robot1_current_pose = robot1_move_group.getCurrentPose().pose;
                     robot1_current_pose = robot1_move_group.getCurrentPose().pose;
-                    double bot1_dx = robot1_current_pose.position.x - hole_loc_record[current_hole].x;
-                    double bot1_dy = robot1_current_pose.position.y - hole_loc_record[current_hole].y;
+                    double bot1_dx = robot1_current_pose.position.x - temp1.x;
+                    double bot1_dy = robot1_current_pose.position.y - temp1.y;
 
                     delta_x += bot1_dx;
                     delta_y += bot1_dy;
@@ -745,8 +755,8 @@ int main(int argc, char *argv[])
                     delta_xy[current_hole][1] = delta_y;
 
                     std::cout << "\n####################" << std::endl;
-                    std::cout << "delta x: " << delta_x << std::endl;
-                    std::cout << "delta y: " << delta_y << std::endl;
+                    std::cout << "delta x: " << delta_x*1000 << " mm" << std::endl;
+                    std::cout << "delta y: " << delta_y*1000 << " mm" << std::endl;
                     std::cout << "####################\n"
                               << std::endl;
                 }
@@ -765,20 +775,23 @@ int main(int argc, char *argv[])
             return 0;
         }
 
+        return 0;
+
         for (int current_hole = 0; current_hole < total_holes; current_hole++)
         {
             ROS_INFO(("hole " + std::to_string(current_hole) + ", screw_robot move").c_str());
 
             auto point_ = hole_loc_record2[current_hole];
-            // point_.x += delta_xy[current_hole][0];
-            // point_.y += delta_xy[current_hole][1];
+            point_.x += delta_xy[current_hole][0];
+            point_.y += delta_xy[current_hole][1];
 
             if (!screw_bot_go(point_, hole_quat_record2[current_hole], robot2_move_group))
             {
                 std::cout << "wrong cartesian" << std::endl;
                 return 0;
             }
-            // screw_hole();
+            ros::Duration(5.0).sleep();
+            screw_hole();
         }
 
         //robot2 move away
