@@ -2,10 +2,10 @@
 
 namespace edcircle {
 
-#define line_squares 1
+#define line_squares 2
 #define pi 3.141592653
-#define mag_threshold 30
-#define arc_squares 2
+#define mag_threshold 50
+#define arc_squares 4
 static int shortestline = 50;
 static bool show_steps = false;
 
@@ -55,11 +55,11 @@ class link_ellips{
 public:
     vector<link_arc>* arc_chain;
     vector<link_pix*>* pix_chain;
-	float A[6];
-	Point o;
-	float a;
-	float b;
-	float angle;
+    float A[6];
+    Point o;
+    float a;
+    float b;
+    float angle;
 };
 
 // add by myself, if not it will leak memeory
@@ -966,140 +966,140 @@ void ExtendArcToCircle(vector<link_arc> arc_list, vector<link_circle>& circle_li
 
 void compute_ellips(vector<link_pix*> pix_chain, float* a, float &r)
 {
-	float c[36] = {0, 0, 2, 0, 0, 0, 0, -1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-	Mat C(6, 6, CV_32FC1, c);
-	int pix_num = pix_chain.size();
-	Mat D(pix_num, 6, CV_32FC1);
-	vector<vector<float> > X;
-	
-	for (int i = 0; i < pix_num;i++)
-	{
-		float x = (*pix_chain[i]).x/10;
-		float y = (*pix_chain[i]).y/10;
-		float* data = D.ptr<float>(i);
-		data[0] = x*x;
-		data[1] = x*y;
-		data[2] = y*y;
-		data[3] = x;
-		data[4] = y;
-		data[5] = 1;
-		vector<float> X_x;
-		X_x.push_back(x*x);
-		X_x.push_back(x*y);
-		X_x.push_back(y*y);
-		X_x.push_back(x);
-		X_x.push_back(y);
-		X_x.push_back(1);
-		X.push_back(X_x);
-	}
+    float c[36] = {0, 0, 2, 0, 0, 0, 0, -1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    Mat C(6, 6, CV_32FC1, c);
+    int pix_num = pix_chain.size();
+    Mat D(pix_num, 6, CV_32FC1);
+    vector<vector<float> > X;
+
+    for (int i = 0; i < pix_num;i++)
+    {
+        float x = (*pix_chain[i]).x/10;
+        float y = (*pix_chain[i]).y/10;
+        float* data = D.ptr<float>(i);
+        data[0] = x*x;
+        data[1] = x*y;
+        data[2] = y*y;
+        data[3] = x;
+        data[4] = y;
+        data[5] = 1;
+        vector<float> X_x;
+        X_x.push_back(x*x);
+        X_x.push_back(x*y);
+        X_x.push_back(y*y);
+        X_x.push_back(x);
+        X_x.push_back(y);
+        X_x.push_back(1);
+        X.push_back(X_x);
+    }
 //	cout << D << endl;
-	Mat DT(6, pix_num, CV_32FC1);
-	Mat S(6, 6, CV_32FC1);
-	transpose(D, DT);
-	S = DT*D;
-	Mat A(6, 6, CV_32FC1);
-	Mat S_invert;
-	invert(S, S_invert);
-	A = S_invert*C;
+    Mat DT(6, pix_num, CV_32FC1);
+    Mat S(6, 6, CV_32FC1);
+    transpose(D, DT);
+    S = DT*D;
+    Mat A(6, 6, CV_32FC1);
+    Mat S_invert;
+    invert(S, S_invert);
+    A = S_invert*C;
 
-	Mat vec(6, 6, CV_32FC1);
-	Mat val(6, 1, CV_32FC1);
-	eigen(A, val, vec);
-	cout << S << endl << S_invert << endl << " " << A << endl << val << endl << vec << endl;
-	system("pause");
-	for (int i = 0; i < 6; i++)
-	{
-		if (val.at<float>(i,0)>0)
-		{
-			for (int j = 0; j < 6; j++)
-			{
-				a[j] = vec.at<float>(i, j);
-			}
-			break;
-		}
-	}
+    Mat vec(6, 6, CV_32FC1);
+    Mat val(6, 1, CV_32FC1);
+    eigen(A, val, vec);
+    cout << S << endl << S_invert << endl << " " << A << endl << val << endl << vec << endl;
+    system("pause");
+    for (int i = 0; i < 6; i++)
+    {
+        if (val.at<float>(i,0)>0)
+        {
+            for (int j = 0; j < 6; j++)
+            {
+                a[j] = vec.at<float>(i, j);
+            }
+            break;
+        }
+    }
 
-	float u = sqrt(1 / (4 * a[0] * a[2] - a[1] * a[1]));
-	for (int i = 0; i < 6; i++)
-	{
-		a[i] = a[i] * u;
-	}
+    float u = sqrt(1 / (4 * a[0] * a[2] - a[1] * a[1]));
+    for (int i = 0; i < 6; i++)
+    {
+        a[i] = a[i] * u;
+    }
 
-	r = 0;
-	for (int i = 0; i < pix_num; i++)
-	{
-		for (int j = 0; j < 6; j++)
-		{
-			r = r + a[j] * X[i][j];
-		}
-	}
+    r = 0;
+    for (int i = 0; i < pix_num; i++)
+    {
+        for (int j = 0; j < 6; j++)
+        {
+            r = r + a[j] * X[i][j];
+        }
+    }
 }
 
 void ExtendArcToEllips(vector<link_arc> arc_list, vector<link_ellips>& ellips_list)
 {
-	while (arc_list.size() != 0)
-	{
-		//创建一个新圆
-		link_ellips ellips;
+    while (arc_list.size() != 0)
+    {
+        //创建一个新圆
+        link_ellips ellips;
         ellips.arc_chain = new vector<link_arc>;
         ellips.pix_chain = new vector<link_pix*>;
 
         arc_v2free.push_back(ellips.arc_chain);
         pix_v2free.push_back(ellips.pix_chain);
-		vector<link_arc>::iterator arc_iter = arc_list.begin();
-		vector<link_arc>::iterator arc_end = arc_list.end();
-		vector<link_arc> arc_copy_list;
+        vector<link_arc>::iterator arc_iter = arc_list.begin();
+        vector<link_arc>::iterator arc_end = arc_list.end();
+        vector<link_arc> arc_copy_list;
         vector<link_pix*> pix_chain;
-		float r = 0;
-		float A[6] = { 0 };
+        float r = 0;
+        float A[6] = { 0 };
 
-		//记录圆弧的两个端点
-		Point p1, p2;
+        //记录圆弧的两个端点
+        Point p1, p2;
         p1.x = (*arc_list[0].pix_chain->begin())->x;
         p1.y = (*arc_list[0].pix_chain->begin())->y;
         p2.x = (*(arc_list[0].pix_chain->end() - 1))->x;
         p2.y = (*(arc_list[0].pix_chain->end() - 1))->y;
-		//先把第一个圆弧放进去
+        //先把第一个圆弧放进去
         pix_chain.insert(pix_chain.end(), (*arc_iter->pix_chain).begin(), (*arc_iter->pix_chain).end());
-		compute_ellips(pix_chain, ellips.A, r);
+        compute_ellips(pix_chain, ellips.A, r);
         ellips.arc_chain->push_back(*arc_iter);
         (*ellips.pix_chain) = pix_chain;
-		//去掉第一个圆弧
-		arc_list.erase(arc_iter);
-		arc_iter = arc_list.begin();
-		arc_end = arc_list.end();
-		//从剩下的圆弧中依次找到最近的连接
-		while (arc_list.size() != 0)
-		{
-			arc_iter = find_the_nearest(p1, p2, arc_iter, arc_end);
+        //去掉第一个圆弧
+        arc_list.erase(arc_iter);
+        arc_iter = arc_list.begin();
+        arc_end = arc_list.end();
+        //从剩下的圆弧中依次找到最近的连接
+        while (arc_list.size() != 0)
+        {
+            arc_iter = find_the_nearest(p1, p2, arc_iter, arc_end);
             pix_chain.insert(pix_chain.end(), (*arc_iter->pix_chain).begin(), (*arc_iter->pix_chain).end());
-			compute_ellips(pix_chain, A, r);
-			if (r < 1.5)
-			{
+            compute_ellips(pix_chain, A, r);
+            if (r < 1.5)
+            {
                 ellips.arc_chain->push_back(*arc_iter);
                 (*ellips.pix_chain) = pix_chain;
-				for (int i = 0; i < 6; i++)
-				{
-					ellips.A[i] = A[i];
-				}
-				updata_the_end(p1, p2, arc_iter);
-				arc_list.erase(arc_iter);
-				arc_iter = arc_list.begin();
-				arc_end = arc_list.end();
-			}
-			else
-			{
+                for (int i = 0; i < 6; i++)
+                {
+                    ellips.A[i] = A[i];
+                }
+                updata_the_end(p1, p2, arc_iter);
+                arc_list.erase(arc_iter);
+                arc_iter = arc_list.begin();
+                arc_end = arc_list.end();
+            }
+            else
+            {
                 pix_chain = (*ellips.pix_chain);
-				arc_copy_list.push_back(*arc_iter);
-				arc_list.erase(arc_iter);
-				arc_iter = arc_list.begin();
-				arc_end = arc_list.end();
-			}
-		}
-		ellips_list.push_back(ellips);
-		arc_list = arc_copy_list;
-		arc_copy_list.clear();
-	}
+                arc_copy_list.push_back(*arc_iter);
+                arc_list.erase(arc_iter);
+                arc_iter = arc_list.begin();
+                arc_end = arc_list.end();
+            }
+        }
+        ellips_list.push_back(ellips);
+        arc_list = arc_copy_list;
+        arc_copy_list.clear();
+    }
 }
 
 double jiecheng(int n)
@@ -1181,21 +1181,20 @@ float helmholtz(vector<link_circle>::iterator circle_list_iter, Mat sobelx, Mat 
 			}
 		}
 	}
-	for (int i = k; i <= n; i++)
-	{
-//		alpha = collect(n, i);
-		// alpha = alpha +collect(n,i)*pow(0.125, i)*pow(0.875, n - i);
-		alpha = alpha +collect_safe(n,i);
-	}
-	alpha = alpha*pow(N, 5);
+//	for (int i = k; i <= n; i++)
+//	{
+//		// alpha = alpha +collect(n,i)*pow(0.125, i)*pow(0.875, n - i);
+//		alpha = alpha +collect_safe(n,i);
+//	}
+//	alpha = alpha*pow(N, 5);
+//	return(alpha);
+     if(k>n/3 && n>N/40){
+        return 0;
+     }else{
+        return 10;
+     }
 
-	// if(k>n/3 && n>N/40){
-	// 	return 0;
-	// }else{
-	// 	return 10;
-	// }
 
-	return(alpha);
 }
 
 /****************************主函数*************************************************/
@@ -1292,42 +1291,42 @@ std::vector<cv::Point> find_circle(Mat gray, std::vector<float>& radiuses)
     seg_now = seg_now->next;                                     //指针指过去
 	seg_now->next = NULL;
 
-	//自动描绘边缘
-	for (int i = 1; i < mag.rows; i++)
-	{
-		for (int j = 1; j < mag.cols; j++)
-		{
-			if (edge.at<uchar>(i, j) == 128)                      //如果找到了锚点则进行下一步
-			{
+    //自动描绘边缘
+    for (int i = 1; i < mag.rows; i++)
+    {
+        for (int j = 1; j < mag.cols; j++)
+        {
+            if (edge.at<uchar>(i, j) == 128)                      //如果找到了锚点则进行下一步
+            {
                 seg_now->addr = (link_pix*)malloc(sizeof(link_pix));  //创建该边缘中的第一个像素点
                 pix2free.push_back(seg_now->addr);
 
                 pix_now = seg_now->addr;                           //像素指针指向刚才创建的第一个点
 
-				int k = 0;
-				k = rout(i, j, mag, edge, dir, pix_now, seg_now);
-				if (k > shortestline)
-				{
-					seg_now->addr = pix_now;
+                int k = 0;
+                k = rout(i, j, mag, edge, dir, pix_now, seg_now);
+                if (k > shortestline)
+                {
+                    seg_now->addr = pix_now;
                     seg_now->next = (link_seg*)malloc(sizeof(link_seg));            //创建新的边缘
                     seg2free.push_back(seg_now->next);
 
                     seg_now = seg_now->next;                                     //指针指过去
-					seg_now->next = NULL;
-					seg_now->addr = NULL;
-				}
-				else
-				{
-					seg_now->addr = NULL;
-				}
-			}
-		}
-	}
-	
+                    seg_now->next = NULL;
+                    seg_now->addr = NULL;
+                }
+                else
+                {
+                    seg_now->addr = NULL;
+                }
+            }
+        }
+    }
 
-	//转化为vector
 
-	Mat BGR_edge(mag.size(), CV_8UC3, Scalar(0));
+    //转化为vector
+
+    Mat BGR_edge(mag.size(), CV_8UC3, Scalar(0));
 	seg_now = seg_head->next;
 	for (; seg_now->addr != NULL; seg_now = seg_now->next)
 	{

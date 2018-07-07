@@ -309,7 +309,7 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v)
     return idx;
 }
 
-cv::Point find(cv::Mat src, bool denoise)
+cv::Point find(cv::Mat src, bool denoise, bool hough)
 {
     bool vis_result = true;
     bool vis_center = true;
@@ -328,14 +328,9 @@ cv::Point find(cv::Mat src, bool denoise)
 
     if (denoise)
     {
-        // GaussianBlur(rgb, rgb, cv::Size(5, 5), 1);
-        cv::Mat lab;
-        cv::cvtColor(rgb, lab, CV_BGR2Lab);
-        //ori: L 0--100 a: -127--127 b: -127--127, now all 0-255
+        seg_helper::min_span_tree::Graph graph(src);
 
-        seg_helper::min_span_tree::Graph graph(lab);
-
-        Segmentation seg(graph.V_size, graph.super_indices, graph.mst_edges);
+        Segmentation seg(src, graph.mst_edges);
         auto lvs = seg.process();
 
         int i = 0;
@@ -345,6 +340,7 @@ cv::Point find(cv::Mat src, bool denoise)
             auto &lv = lvs[i];
 
             cv::Mat ave_rgb = cv::Mat(rgb.size(), CV_8UC3, cv::Scalar(0));
+
             for (auto &part : lv)
             {
                 cv::Vec3d aveColor(0, 0, 0);
@@ -365,15 +361,29 @@ cv::Point find(cv::Mat src, bool denoise)
                 }
             }
             cv::cvtColor(ave_rgb, src, CV_BGR2GRAY);
-            for(int i=0; i<20; i++)
+
+            for(int i=0; i<3; i++)
             medianBlur(src, src, 3);
             // cv::threshold(src, src, 0, 255, CV_THRESH_OTSU);
-            // GaussianBlur(src, src, cv::Size(3, 3), 3);
+//             GaussianBlur(src, src, cv::Size(3, 3), 3);
         }
     }
 
+    std::vector<cv::Point> centers;
     std::vector<float> radiuses;
-    auto centers = edcircle::find_circle(src, radiuses);
+
+    if(hough){
+         std::vector<cv::Vec3f> circles;
+         cv::HoughCircles( src, circles, CV_HOUGH_GRADIENT, 1, src.rows/100,
+                           50, 30, 0, src.rows/5);
+         for(auto circle: circles){
+             cv::Point p = {int(circle[0]), int(circle[1])};
+             centers.push_back(p);
+             radiuses.push_back(circle[2]);
+         }
+    }else{
+        centers = edcircle::find_circle(src, radiuses);
+    }
 
     if (centers.empty())
     {
@@ -382,14 +392,13 @@ cv::Point find(cv::Mat src, bool denoise)
             cv::Mat to_show = src;
             cv::resize(to_show, to_show, {to_show.cols * 1024 / to_show.rows, 1024});
             cv::imshow("hole detect", to_show);
-            cv::waitKey(1);
         }
         return cv::Point(0, 0);
     }
 
     cv::Point c = {src.cols / 2, src.rows / 2};
     cv::Point best_p;
-    float best_r;
+    float best_r = 0;
     double closest = std::numeric_limits<double>::max();
     for (int i = 0; i < centers.size(); i++)
     {
@@ -420,29 +429,30 @@ cv::Point find(cv::Mat src, bool denoise)
         }
     }
 
+    best_p = best_p_smallest;
+    best_r = smallest_r;
+
     if (vis_result)
     {
         cv::Mat to_show;
         cv::cvtColor(src, to_show, CV_GRAY2BGR);
-        // for (int i = 0; i < centers.size(); i++)
-        // {
-        //     cv::circle(to_show, centers[i], radiuses[i], {0, 0, 255}, 2);
-        // }
-        // cv::line(to_show, cv::Point(best_p.x, best_p.y - best_r / 2), cv::Point(best_p.x, best_p.y + best_r / 2), cv::Scalar(0, 255, 0), 2);
-        // cv::line(to_show, cv::Point(best_p.x - best_r / 2, best_p.y), cv::Point(best_p.x + best_r / 2, best_p.y), cv::Scalar(0, 255, 0), 2);
+         for (int i = 0; i < centers.size(); i++)
+         {
+             cv::circle(to_show, centers[i], radiuses[i], {0, 0, 255}, 2);
+         }
+         cv::line(to_show, cv::Point(best_p.x, best_p.y - best_r / 2), cv::Point(best_p.x, best_p.y + best_r / 2), cv::Scalar(0, 255, 0), 2);
+         cv::line(to_show, cv::Point(best_p.x - best_r / 2, best_p.y), cv::Point(best_p.x + best_r / 2, best_p.y), cv::Scalar(0, 255, 0), 2);
 
-        // if (vis_center)
-        // {
-        //     cv::circle(to_show, {to_show.cols / 2, to_show.rows / 2}, 1, {255, 255, 0}, 2);
-        //     cv::circle(to_show, {to_show.cols / 2, to_show.rows / 2}, best_r / 2, {255, 255, 0}, 2);
-        //     cv::line(to_show, {to_show.cols / 2, to_show.rows / 2}, cv::Point(best_p.x, best_p.y), cv::Scalar(0, 255, 255), 1);
-        // }
-        // cv::pyrDown(to_show, to_show);
+         if (vis_center)
+         {
+             cv::circle(to_show, {to_show.cols / 2, to_show.rows / 2}, 1, {255, 255, 0}, 2);
+             cv::circle(to_show, {to_show.cols / 2, to_show.rows / 2}, best_r / 2, {255, 255, 0}, 2);
+             cv::line(to_show, {to_show.cols / 2, to_show.rows / 2}, cv::Point(best_p.x, best_p.y), cv::Scalar(0, 255, 255), 1);
+         }
         cv::resize(to_show, to_show, {to_show.cols * 1024 / to_show.rows, 1024});
         cv::imshow("hole detect", to_show);
-        cv::waitKey(1);
     }
-    return best_p_smallest;
+    return best_p;
 }
 
 std::vector<double> find_hole(double z, double timeout, int cam_id)

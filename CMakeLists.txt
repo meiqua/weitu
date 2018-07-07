@@ -4,8 +4,8 @@ project(weitu)
 
 #SET(CMAKE_BUILD_TYPE "Debug")
 SET(CMAKE_BUILD_TYPE "Release")
-SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
-SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2 -Wall")
+SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb")
+SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2")
 
 OPTION(USE_CAKTIN "cakin package" 1)
 
@@ -32,6 +32,8 @@ LINK_DIRECTORIES(${LINK_DIRECTORIES}
     /opt/iCentral/iCentral/lib)
 
 # opencv env
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /home/meiqua/anaconda3/envs/furnace)
+set(CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-8.0)
 find_package(OpenCV 3 REQUIRED)
 
 
@@ -47,25 +49,9 @@ set(FINDER_SRC
 set(EDCIRCLE_SRC
     src/edcircle/edcircle.cpp)
 
-
-# eigen3
-find_package( Eigen3 REQUIRED )
-include_directories(${INCLUDE_DIRECTORIES}
-    ${EIGEN3_INCLUDE_DIR})
-# asp
-include_directories(${INCLUDE_DIRECTORIES}
-    "src/seg/asp/include"
-    "src/seg/asp"
-    "src/seg")
-set(ASP_SRC
-    src/seg/asp/src/libasp/algos/ASP.cpp
-    src/seg/asp/src/libasp/algos/DASP.cpp
-    src/seg/asp/src/libasp/algos/SLIC.cpp
-    src/seg/asp/src/libasp/pds/pds.cpp
-    src/seg/asp/src/libasp/pds/Grid.cpp
-    src/seg/asp/src/libasp/pds/FloydSteinberg.cpp
-    src/seg/CIEDE2000/CIEDE2000.cpp
-    src/seg/seg.cpp)
+set(SEG_SRC
+        src/seg/seg.cpp
+        src/seg/CIEDE2000/CIEDE2000.cpp)
 
 
 include_directories(${INCLUDE_DIRECTORIES}
@@ -75,7 +61,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         include)
 
 # main lib
-add_library(${PROJECT_NAME} ${FINDER_SRC} ${EDCIRCLE_SRC} ${ASP_SRC} src/weitu.cpp)
+add_library(${PROJECT_NAME} src/weitu.cpp ${FINDER_SRC} ${EDCIRCLE_SRC} ${SEG_SRC})
 target_link_libraries(${PROJECT_NAME} ${WEITU_LIBS} ${OpenCV_LIBS})
 
 # test exe
