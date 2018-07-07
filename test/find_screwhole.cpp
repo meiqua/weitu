@@ -320,14 +320,14 @@ void screw_hole()
 
 void SIGINT_handler(int signal)
 {
-    if (init_success)
-    {
-        ur_msgs::SetIO robot2_io_states_srv;
-        robot2_io_states_srv.request.fun = 1;
-        robot2_io_states_srv.request.pin = 7;
-        robot2_io_states_srv.request.state = 0.0;
-        robot2_io_states_client.call(robot2_io_states_srv);
-    }
+    // if (init_success)
+    // {
+    //     ur_msgs::SetIO robot2_io_states_srv;
+    //     robot2_io_states_srv.request.fun = 1;
+    //     robot2_io_states_srv.request.pin = 7;
+    //     robot2_io_states_srv.request.state = 0.0;
+    //     robot2_io_states_client.call(robot2_io_states_srv);
+    // }
     exit(1);
 }
 
@@ -359,6 +359,7 @@ int main(int argc, char *argv[])
         if (cam_bot_cali)
         {
             ROS_INFO("OPEN LIGHT");
+            ur_msgs::SetIO robot2_io_states_srv;
             robot2_io_states_srv.request.fun = 1;
             robot2_io_states_srv.request.pin = 7;
             robot2_io_states_srv.request.state = 1.0;
@@ -549,8 +550,8 @@ int main(int argc, char *argv[])
 
                 geometry_msgs::Pose robot1_current_pose;
                 robot1_current_pose = robot1_move_group.getCurrentPose().pose;
-                phy_mat.at<double>(0, 0) = robot1_current_pose.x - hole_loc_record[current_hole].x;
-                phy_mat.at<double>(1, 0) = robot1_current_pose.y - hole_loc_record[current_hole].y;
+                phy_mat.at<double>(0, 0) = robot1_current_pose.position.x - hole_loc_record[current_hole].x;
+                phy_mat.at<double>(1, 0) = robot1_current_pose.position.y - hole_loc_record[current_hole].y;
 
                 // go 0, 0.005
                 loc_temp.x = hole_loc_record[current_hole].x;
@@ -571,8 +572,8 @@ int main(int argc, char *argv[])
                 cam_mat.at<double>(1, 1) = cam_delta_xy2[1];
 
                 robot1_current_pose = robot1_move_group.getCurrentPose().pose;
-                phy_mat.at<double>(0, 1) = robot1_current_pose.x - hole_loc_record[current_hole].x;
-                phy_mat.at<double>(1, 1) = robot1_current_pose.y - hole_loc_record[current_hole].y;
+                phy_mat.at<double>(0, 1) = robot1_current_pose.position.x - hole_loc_record[current_hole].x;
+                phy_mat.at<double>(1, 1) = robot1_current_pose.position.y - hole_loc_record[current_hole].y;
 
                 // relative, bot plus means hole minus
                 auto linear_cv = (cam_mat.inv()) * (-phy_mat);
@@ -619,6 +620,9 @@ int main(int argc, char *argv[])
                 robot1_wait_point = robot1_current_pose.position;
                 robot1_wait_quat = robot1_current_pose.orientation;
             }
+
+            robot2_io_states_srv.request.state = 0.0;
+            robot2_io_states_client.call(robot2_io_states_srv);
         }
 
         bool screw_bot_cali = false;
@@ -693,10 +697,6 @@ int main(int argc, char *argv[])
         }
 
         save_data();
-
-        robot2_io_states_srv.request.state = 0.0;
-        robot2_io_states_client.call(robot2_io_states_srv);
-
         ROS_INFO("init data cali done");
     }
 
@@ -733,8 +733,8 @@ int main(int argc, char *argv[])
 
                     geometry_msgs::Pose robot1_current_pose;
                     robot1_current_pose = robot1_move_group.getCurrentPose().pose;
-                    double bot1_dx = robot1_current_pose.x - hole_loc_record[current_hole].x;
-                    double bot1_dy = robot1_current_pose.y - hole_loc_record[current_hole].y;
+                    double bot1_dx = robot1_current_pose.position.x - hole_loc_record[current_hole].x;
+                    double bot1_dy = robot1_current_pose.position.y - hole_loc_record[current_hole].y;
 
                     delta_x += bot1_dx;
                     delta_y += bot1_dy;
