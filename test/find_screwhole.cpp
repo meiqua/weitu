@@ -36,11 +36,6 @@ static std::vector<std::vector<double>> hole_detect_record_base(total_holes, {0,
 static std::vector<std::vector<double>> delta_xy(total_holes, {0, 0});
 static double linear_cali_mat[4] = {1, 0, 0, 1};
 
-static const std::string ROBOT1_PLANNING_GROUP = "robot1_manipulator";
-static const std::string ROBOT2_PLANNING_GROUP = "robot2_manipulator";
-static moveit::planning_interface::MoveGroupInterface robot1_move_group(ROBOT1_PLANNING_GROUP);
-static moveit::planning_interface::MoveGroupInterface robot2_move_group(ROBOT2_PLANNING_GROUP);
-
 static ros::ServiceClient robot2_io_states_client;
 
 static const double jump_threshold = 5;
@@ -151,7 +146,7 @@ void load_data()
     }
 }
 
-bool cam_bot_go(geometry_msgs::Point p, geometry_msgs::Quaternion q)
+bool cam_bot_go(geometry_msgs::Point p, geometry_msgs::Quaternion q, moveit::planning_interface::MoveGroupInterface& robot1_move_group)
 {
     double fraction = 0;
     std::vector<geometry_msgs::Pose> waypoints;
@@ -178,7 +173,7 @@ bool cam_bot_go(geometry_msgs::Point p, geometry_msgs::Quaternion q)
     return true;
 }
 
-bool screw_bot_go(geometry_msgs::Point p, geometry_msgs::Quaternion q)
+bool screw_bot_go(geometry_msgs::Point p, geometry_msgs::Quaternion q, moveit::planning_interface::MoveGroupInterface& robot2_move_group)
 {
     double fraction;
     std::vector<geometry_msgs::Pose> waypoints;
@@ -217,7 +212,7 @@ bool screw_bot_go(geometry_msgs::Point p, geometry_msgs::Quaternion q)
     return true;
 }
 
-bool screw_bot_go_wait(geometry_msgs::Point p, geometry_msgs::Quaternion q)
+bool screw_bot_go_wait(geometry_msgs::Point p, geometry_msgs::Quaternion q, moveit::planning_interface::MoveGroupInterface& robot2_move_group)
 {
     double fraction;
     std::vector<geometry_msgs::Pose> waypoints;
@@ -320,6 +315,7 @@ void screw_hole()
 
 void SIGINT_handler(int signal)
 {
+    // close light
     // if (init_success)
     // {
     //     ur_msgs::SetIO robot2_io_states_srv;
@@ -343,7 +339,13 @@ int main(int argc, char *argv[])
 
     ros::init(argc, argv, "dual_arm");
     ros::NodeHandle nh;
+    
+    const std::string ROBOT1_PLANNING_GROUP = "robot1_manipulator";
+    const std::string ROBOT2_PLANNING_GROUP = "robot2_manipulator";
+    moveit::planning_interface::MoveGroupInterface robot1_move_group(ROBOT1_PLANNING_GROUP);
+    moveit::planning_interface::MoveGroupInterface robot2_move_group(ROBOT2_PLANNING_GROUP);
     robot1_move_group.setEndEffectorLink("robot1_camera_eef_link");
+
     robot2_io_states_client = nh.serviceClient<ur_msgs::SetIO>("robot2/ur_driver/set_io");
     ros::AsyncSpinner spinner(2);
     spinner.start();
@@ -373,7 +375,7 @@ int main(int argc, char *argv[])
 
                 if (init_success)
                 {
-                    ret1 = cam_bot_go(hole_loc_record[current_hole], hole_quat_record[current_hole]);
+                    ret1 = cam_bot_go(hole_loc_record[current_hole], hole_quat_record[current_hole], robot1_move_group);
                     if (!ret1)
                     {
                         std::cout << "wrong cartesian" << std::endl;
@@ -478,7 +480,7 @@ int main(int argc, char *argv[])
                         {
                             continue;
                         }
-                        ret1 = cam_bot_go(temp, robot1_current_pose.orientation);
+                        ret1 = cam_bot_go(temp, robot1_current_pose.orientation, robot1_move_group);
                         if (!ret1)
                         {
                             std::cout << "wrong cartesian" << std::endl;
@@ -533,7 +535,7 @@ int main(int argc, char *argv[])
 
                 // go 0.005, 0
                 loc_temp.x += bound;
-                bool ret1 = cam_bot_go(loc_temp, hole_quat_record[current_hole]);
+                bool ret1 = cam_bot_go(loc_temp, hole_quat_record[current_hole], robot1_move_group);
                 if (!ret1)
                 {
                     std::cout << "wrong cartesian" << std::endl;
@@ -556,7 +558,7 @@ int main(int argc, char *argv[])
                 // go 0, 0.005
                 loc_temp.x = hole_loc_record[current_hole].x;
                 loc_temp.y += bound;
-                ret1 = cam_bot_go(loc_temp, hole_quat_record[current_hole]);
+                ret1 = cam_bot_go(loc_temp, hole_quat_record[current_hole], robot1_move_group);
                 if (!ret1)
                 {
                     std::cout << "wrong cartesian" << std::endl;
@@ -595,7 +597,7 @@ int main(int argc, char *argv[])
 
                 if (init_success)
                 {
-                    ret1 = cam_bot_go(robot1_wait_point, robot1_wait_quat);
+                    ret1 = cam_bot_go(robot1_wait_point, robot1_wait_quat, robot1_move_group);
                     if (!ret1)
                     {
                         std::cout << "wrong cartesian" << std::endl;
@@ -636,7 +638,7 @@ int main(int argc, char *argv[])
 
                 if (init_success)
                 {
-                    ret1 = screw_bot_go_wait(hole_loc_record2[current_hole], hole_quat_record2[current_hole]);
+                    ret1 = screw_bot_go_wait(hole_loc_record2[current_hole], hole_quat_record2[current_hole], robot2_move_group);
                     if (!ret1)
                     {
                         std::cout << "wrong cartesian" << std::endl;
@@ -669,7 +671,7 @@ int main(int argc, char *argv[])
 
                 if (init_success)
                 {
-                    ret1 = screw_bot_go(robot2_wait_point, robot2_wait_quat);
+                    ret1 = screw_bot_go(robot2_wait_point, robot2_wait_quat, robot2_move_group);
                     if (!ret1)
                     {
                         std::cout << "wrong cartesian" << std::endl;
@@ -712,7 +714,7 @@ int main(int argc, char *argv[])
             temp1.x += 0.006;
             temp1.y += 0.004;
 
-            if (!cam_bot_go(temp1, hole_quat_record[current_hole]))
+            if (!cam_bot_go(temp1, hole_quat_record[current_hole], robot1_move_group))
             {
                 std::cout << "wrong cartesian" << std::endl;
                 return 0;
@@ -757,7 +759,7 @@ int main(int argc, char *argv[])
 
         //robot1 move away
         ROS_INFO("cam robot move to waiting point");
-        if (!cam_bot_go(robot1_wait_point, robot1_wait_quat))
+        if (!cam_bot_go(robot1_wait_point, robot1_wait_quat, robot1_move_group))
         {
             std::cout << "wrong cartesian" << std::endl;
             return 0;
@@ -771,7 +773,7 @@ int main(int argc, char *argv[])
             // point_.x += delta_xy[current_hole][0];
             // point_.y += delta_xy[current_hole][1];
 
-            if (!screw_bot_go(point_, hole_quat_record2[current_hole]))
+            if (!screw_bot_go(point_, hole_quat_record2[current_hole], robot2_move_group))
             {
                 std::cout << "wrong cartesian" << std::endl;
                 return 0;
@@ -781,7 +783,7 @@ int main(int argc, char *argv[])
 
         //robot2 move away
         ROS_INFO("screw robot move to waiting point");
-        if (!screw_bot_go_wait(robot2_wait_point, robot2_wait_quat))
+        if (!screw_bot_go_wait(robot2_wait_point, robot2_wait_quat, robot2_move_group))
         {
             std::cout << "wrong cartesian" << std::endl;
             return 0;
