@@ -5,9 +5,9 @@ project(weitu)
 #SET(CMAKE_BUILD_TYPE "Debug")
 SET(CMAKE_BUILD_TYPE "Release")
 SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb")
-SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2")
+SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3")
 
-OPTION(USE_CAKTIN "cakin package" 1)
+OPTION(USE_CAKTIN "cakin package" 0)
 
 if(USE_CAKTIN)
 # Find catkin
@@ -46,13 +46,9 @@ set(FINDER_SRC
     src/finder/finderpattern.cpp
     src/finder/finderpatternfinder.cpp)
 
-set(EDCIRCLE_SRC
-    src/edcircle/edcircle.cpp)
-
-set(SEG_SRC
-        src/seg/seg.cpp
-        src/seg/CIEDE2000/CIEDE2000.cpp)
-
+set(LINE2D_SRC
+    src/line2D/line2Dup.cpp)
+configure_file(src/line2D/circle_templ.yaml circle_templ.yaml COPYONLY)
 
 include_directories(${INCLUDE_DIRECTORIES}
         ${CMAKE_CURRENT_BINARY_DIR}
@@ -61,7 +57,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         include)
 
 # main lib
-add_library(${PROJECT_NAME} src/weitu.cpp ${FINDER_SRC} ${EDCIRCLE_SRC} ${SEG_SRC})
+add_library(${PROJECT_NAME} src/weitu.cpp ${FINDER_SRC} ${LINE2D_SRC})
 target_link_libraries(${PROJECT_NAME} ${WEITU_LIBS} ${OpenCV_LIBS})
 
 # test exe

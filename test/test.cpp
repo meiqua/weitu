@@ -38,7 +38,7 @@ void hole_test(){
     using namespace std;
     using namespace cv;
 
-    auto rgb = cv::imread("/home/meiqua/weitu/test/t4.png");
+    auto rgb = cv::imread("/home/meiqua/weitu/test/test.png");
 
     Timer timer;
 
@@ -46,7 +46,7 @@ void hole_test(){
 //    int start_rows = rgb.rows / 4;
 //    cv::Rect roi(start_cols, start_rows, rgb.cols / 2, rgb.rows / 2);
 //    auto p = hole_detect::find(rgb(roi), true);
-    auto p = hole_detect::find(rgb, false);
+    auto p = hole_detect::find(rgb);
 
     timer.out("detect time");
     waitKey(0);
@@ -67,7 +67,7 @@ void camera_hole_test(){
            int start_cols = rgb.cols / 4;
            int start_rows = rgb.rows / 4;
            cv::Rect roi(start_cols, start_rows, rgb.cols / 2, rgb.rows / 2);
-           auto p = hole_detect::find(rgb(roi), false);
+           auto p = hole_detect::find(rgb(roi));
            timer.out("detect time");
 
         //    if(rgb.channels()==1){

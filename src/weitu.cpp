@@ -1,5 +1,5 @@
 #include "weitu.h"
-#include "seg/seg.h"
+#include "line2D/line2Dup.h"
 namespace weitu
 {
 #define INFINITE 0xFFFFFFFF // Infinite timeout
@@ -309,7 +309,7 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v)
     return idx;
 }
 
-cv::Point find(cv::Mat src, bool denoise, bool hough)
+cv::Point find(cv::Mat src)
 {
     bool vis_result = true;
     bool vis_center = true;
@@ -326,64 +326,35 @@ cv::Point find(cv::Mat src, bool denoise, bool hough)
         cv::cvtColor(src, rgb, CV_GRAY2BGR);
     }
 
-    if (denoise)
-    {
-        seg_helper::min_span_tree::Graph graph(src);
-
-        Segmentation seg(src, graph.mst_edges);
-        auto lvs = seg.process();
-
-        int i = 0;
-        //    for(int i=0;i<lvs.size();i++)
-        if (!lvs.empty())
-        {
-            auto &lv = lvs[i];
-
-            cv::Mat ave_rgb = cv::Mat(rgb.size(), CV_8UC3, cv::Scalar(0));
-
-            for (auto &part : lv)
-            {
-                cv::Vec3d aveColor(0, 0, 0);
-                int count = 0;
-                for (int idx : part)
-                {
-                    int row = idx / int(rgb.cols);
-                    int col = idx % int(rgb.cols);
-                    aveColor += rgb.at<cv::Vec3b>(row, col);
-                    count++;
-                }
-                aveColor /= count;
-                for (int idx : part)
-                {
-                    int row = idx / int(rgb.cols);
-                    int col = idx % int(rgb.cols);
-                    ave_rgb.at<cv::Vec3b>(row, col) = aveColor;
-                }
-            }
-            cv::cvtColor(ave_rgb, src, CV_BGR2GRAY);
-
-            for(int i=0; i<3; i++)
-            medianBlur(src, src, 3);
-            // cv::threshold(src, src, 0, 255, CV_THRESH_OTSU);
-//             GaussianBlur(src, src, cv::Size(3, 3), 3);
-        }
-    }
-
     std::vector<cv::Point> centers;
     std::vector<float> radiuses;
 
-    if(hough){
-         std::vector<cv::Vec3f> circles;
-         cv::HoughCircles( src, circles, CV_HOUGH_GRADIENT, 1, src.rows/100,
-                           50, 30, 0, src.rows/5);
-         for(auto circle: circles){
-             cv::Point p = {int(circle[0]), int(circle[1])};
-             centers.push_back(p);
-             radiuses.push_back(circle[2]);
-         }
-    }else{
-        centers = edcircle::find_circle(src, radiuses);
+    line2Dup::Detector detector(128, {4, 8});
+    assert(src.rows == 1024);
+
+    std::vector<std::string> ids;
+    ids.push_back("circle");
+    detector.readClasses(ids, "%s_templ.yaml");
+
+    cv::Rect roi(0, 0, 1024 ,1024);
+    cv::Mat img = rgb(roi).clone();
+
+    auto matches = detector.match(img, 92, ids);
+
+    size_t top5 = 50;
+    if(top5>matches.size()) top5=matches.size();
+    for(size_t i=0; i<top5; i++){
+        auto match = matches[i];
+        auto templ = detector.getTemplates("circle",
+                                           match.template_id);
+        int x =  templ[0].width/2 + match.x;
+        int y = templ[0].height/2 + match.y;
+        int r = templ[0].width/2;
+
+        centers.emplace_back(x, y);
+        radiuses.push_back(r);
     }
+
 
     if (centers.empty())
     {
@@ -490,7 +461,7 @@ std::vector<double> find_hole(double z, double timeout, int cam_id)
             start_rows = rgb.rows / 4;
             cv::Rect roi(start_cols, start_rows, rgb.cols / 2, rgb.rows / 2);
             // cv::pyrDown(rgb, rgb);
-            hole_img_point = hole_detect::find(rgb(roi), false);
+            hole_img_point = hole_detect::find(rgb(roi));
             if (hole_img_point.x == 0)
                 continue;
             break;
