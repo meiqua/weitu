@@ -339,7 +339,7 @@ cv::Point find(cv::Mat src)
     cv::Rect roi(0, 0, 1024 ,1024);
     cv::Mat img = rgb(roi).clone();
 
-    auto matches = detector.match(img, 92, ids);
+    auto matches = detector.match(img, 90, ids);
 
     size_t top5 = 50;
     if(top5>matches.size()) top5=matches.size();

@@ -38,7 +38,7 @@ void hole_test(){
     using namespace std;
     using namespace cv;
 
-    auto rgb = cv::imread("/home/meiqua/weitu/test/test.png");
+    auto rgb = cv::imread("/home/meiqua/weitu/test/t3.png");
 
     Timer timer;
 
