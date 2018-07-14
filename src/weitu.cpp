@@ -330,13 +330,15 @@ cv::Point find(cv::Mat src)
     std::vector<float> radiuses;
 
     line2Dup::Detector detector(128, {4, 8});
-    assert(src.rows == 1024);
 
     std::vector<std::string> ids;
     ids.push_back("circle");
     detector.readClasses(ids, "%s_templ.yaml");
 
-    cv::Rect roi(0, 0, 1024 ,1024);
+    int stride = 32;
+    int row_step = rgb.rows/stride;
+    int col_step = rgb.cols/stride;
+    cv::Rect roi(0, 0, stride*col_step ,stride*row_step);
     cv::Mat img = rgb(roi).clone();
 
     auto matches = detector.match(img, 90, ids);
