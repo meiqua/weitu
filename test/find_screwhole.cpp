@@ -11,6 +11,7 @@
 #include "weitu.h"
 #include <iostream>
 #include <csignal>
+#include <cmath>
 
 static int total_holes = 2;
 
@@ -775,7 +776,42 @@ int main(int argc, char *argv[])
             return 0;
         }
 
-        return 0;
+        // delta theta
+        assert(total_holes%2==0);
+        for (int current_hole = 0; current_hole < total_holes; current_hole+=2)
+        {
+            ROS_INFO(("hole " + std::to_string(current_hole) + ", delta theta").c_str());
+
+            auto point_base = hole_loc_record[current_hole];
+            auto point_delta = hole_loc_record[current_hole+1];
+
+            double base_theta = 3.1415926/2;
+            if(std::abs(point_delta.x - point_base.x) < std::numeric_limits<double>::eps * 1000){
+                if((point_delta.y - point_base.y)<0){
+                    base_theta = -base_theta;
+                }
+            }else{
+                base_theta = std::atan((point_delta.y - point_base.y)/(point_delta.x - point_base.x));
+            }
+            
+            point_base.x += delta_xy[current_hole][0];
+            point_base.y += delta_xy[current_hole][1];
+            
+            point_delta.x += delta_xy[current_hole+1][0];
+            point_delta.y += delta_xy[current_hole+1][1];
+
+            double delta_theta = 3.1415926/2;
+            if(std::abs(point_delta.x - point_base.x) < std::numeric_limits<double>::eps * 1000){
+                if((point_delta.y - point_base.y)<0){
+                    delta_theta = -base_theta;
+                }
+            }else{
+                delta_theta = std::atan((point_delta.y - point_base.y)/(point_delta.x - point_base.x));
+            }
+            delta_theta -= base_theta; 
+            ROS_INFO(("delta theta: " + std::to_string(delta_theta) + " rad").c_str());
+
+        }
 
         for (int current_hole = 0; current_hole < total_holes; current_hole++)
         {
